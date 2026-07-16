@@ -794,7 +794,7 @@ function App() {
     if (!isAuthenticated) return;
     if (activeTab === 'practice') {
       fetchExercises();
-    } else if (activeTab === 'patterns') {
+    } else if (activeTab === 'patterns' || activeTab === 'revision') {
       fetchPatterns();
     }
   }, [activeTab, isAuthenticated]);
