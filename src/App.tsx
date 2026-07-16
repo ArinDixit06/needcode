@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import DsaGuideTab from './DsaGuideTab';
+import RevisionTab from './RevisionTab';
 import { dsaGuideSections } from './dsaGuideData';
 import { 
   CheckCircle2, 
@@ -348,6 +349,7 @@ const getActiveTabName = (tab: string) => {
     case 'learn': return 'AI Explainer';
     case 'practice': return 'DSA Practice';
     case 'patterns': return 'Coding Patterns';
+    case 'revision': return 'Revision Hub';
     default: return 'Workspace';
   }
 };
@@ -361,6 +363,7 @@ const getPageEmoji = (tab: string) => {
     case 'learn': return '🧠';
     case 'practice': return '⚡';
     case 'patterns': return '🧬';
+    case 'revision': return '🔁';
     default: return '📂';
   }
 };
@@ -374,6 +377,7 @@ const getPageTitle = (tab: string) => {
     case 'learn': return 'AI Study Companion';
     case 'practice': return 'DSA Practice Lab';
     case 'patterns': return 'Common Algorithm Patterns';
+    case 'revision': return 'Revision Hub';
     default: return 'NeedCode Workspace';
   }
 };
@@ -387,6 +391,7 @@ const getPageSubtitle = (tab: string) => {
     case 'learn': return 'Your interactive AI console for deep diving into algorithms, data structures, and optimal code patterns.';
     case 'practice': return 'Solve hands-on exercises in the browser for Arrays, Lists, Trees, Stacks, and more to test your muscle memory.';
     case 'patterns': return 'Explore common design patterns tested in technical interviews, including templates and when to use them.';
+    case 'revision': return 'Spaced-repetition review of your solved problems and algorithm patterns. Flashcards, notes, and a pattern quiz to lock in muscle memory.';
     default: return '';
   }
 };
@@ -404,7 +409,7 @@ function App() {
   const [metaStats, setMetaStats] = useState({ totalCount: 0, easyCount: 0, mediumCount: 0, hardCount: 0 });
 
   // UI states
-  const [activeTab, setActiveTab] = useState<'recs' | 'catalog' | 'solved' | 'learn' | 'practice' | 'patterns' | 'guide'>(() => {
+  const [activeTab, setActiveTab] = useState<'recs' | 'catalog' | 'solved' | 'learn' | 'practice' | 'patterns' | 'guide' | 'revision'>(() => {
     return (localStorage.getItem('needcode_active_tab') as any) || 'recs';
   });
   const [loading, setLoading] = useState(true);
@@ -1433,6 +1438,13 @@ function App() {
             >
               <span className="sidebar-item-icon">🧬</span>
               <span>Coding Patterns</span>
+            </div>
+            <div 
+              className={`sidebar-item ${activeTab === 'revision' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('revision'); setMobileMenuOpen(false); }}
+            >
+              <span className="sidebar-item-icon">🔁</span>
+              <span>Revision Hub</span>
             </div>
           </div>
 
@@ -3004,6 +3016,14 @@ function App() {
                       onStartPractice={startPractice}
                       onExplainPattern={handleExplainPattern}
                       onGuideProgressError={(message) => showToast(message, 'error')}
+                    />
+                  )}
+
+                  {activeTab === 'revision' && (
+                    <RevisionTab
+                      solved={solved}
+                      patterns={patternsList}
+                      onExplainPattern={handleExplainPattern}
                     />
                   )}
                 </>
