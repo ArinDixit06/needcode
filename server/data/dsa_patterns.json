@@ -1,0 +1,42 @@
+[
+  {
+    "id": "two-pointers",
+    "name": "Two Pointers",
+    "description": "Uses two references pointing to different indices/elements to process data, reducing time complexity from O(N^2) to O(N).",
+    "key_identifiers": "[\"Sorted arrays or lists\",\"Finding pairs that satisfy a condition\",\"Reversing elements or checking symmetry\"]",
+    "common_problems": "[\"Two Sum II (Sorted)\",\"Valid Palindrome\",\"Container With Most Water\",\"3Sum\"]",
+    "sample_template": "function twoPointersTemplate(arr) {\n  let left = 0;\n  let right = arr.length - 1;\n  while (left < right) {\n    // Process elements at left and right\n    if (condition) {\n      left++;\n    } else {\n      right--;\n    }\n  }\n}"
+  },
+  {
+    "id": "sliding-window",
+    "name": "Sliding Window",
+    "description": "Maintains a subset of contiguous elements (window) that expands or shrinks dynamically, avoiding redundant calculations over sub-arrays.",
+    "key_identifiers": "[\"Subarrays or substrings with target constraints\",\"Finding maximum/minimum sum, length, or distinct elements\",\"Linear time complexity requirements\"]",
+    "common_problems": "[\"Maximum Sum Subarray of Size K\",\"Longest Substring Without Repeating Characters\",\"Minimum Size Subarray Sum\",\"Permutation in String\"]",
+    "sample_template": "function slidingWindowTemplate(arr) {\n  let start = 0;\n  let currentSum = 0;\n  for (let end = 0; end < arr.length; end++) {\n    currentSum += arr[end];\n    while (shrinkCondition) {\n      currentSum -= arr[start];\n      start++;\n    }\n  }\n}"
+  },
+  {
+    "id": "fast-slow-pointers",
+    "name": "Fast & Slow Pointers",
+    "description": "Uses two pointers moving at different speeds (usually slow moves 1 step, fast moves 2 steps) to detect cycles or find midpoints.",
+    "key_identifiers": "[\"Singly linked lists with loops\",\"Finding midpoints of sequences\",\"Finding cyclic dependencies or happy numbers\"]",
+    "common_problems": "[\"Linked List Cycle\",\"Middle of the Linked List\",\"Happy Number\",\"Palindrome Linked List\"]",
+    "sample_template": "function fastSlowPointerTemplate(head) {\n  let slow = head;\n  let fast = head;\n  while (fast !== null && fast.next !== null) {\n    slow = slow.next;\n    fast = fast.next.next;\n    if (slow === fast) {\n      return true; // Cycle detected\n    }\n  }\n  return false;\n}"
+  },
+  {
+    "id": "merge-intervals",
+    "name": "Merge Intervals",
+    "description": "Handles overlapping ranges or intervals by sorting them by start time and merging overlapping boundaries.",
+    "key_identifiers": "[\"Ranges or schedules given as pairs\",\"Finding scheduling overlaps or overlaps in time\",\"Inserting new schedules into sorted timelines\"]",
+    "common_problems": "[\"Merge Intervals\",\"Insert Interval\",\"Non-overlapping Intervals\",\"Meeting Rooms II\"]",
+    "sample_template": "function mergeIntervalsTemplate(intervals) {\n  intervals.sort((a, b) => a[0] - b[0]);\n  const merged = [intervals[0]];\n  for (let i = 1; i < intervals.length; i++) {\n    let lastMerged = merged[merged.length - 1];\n    let curr = intervals[i];\n    if (curr[0] <= lastMerged[1]) {\n      lastMerged[1] = Math.max(lastMerged[1], curr[1]);\n    } else {\n      merged.push(curr);\n    }\n  }\n  return merged;\n}"
+  },
+  {
+    "id": "topological-sort",
+    "name": "Topological Sort",
+    "description": "Finds a linear ordering of directed acyclic graph (DAG) nodes such that for every directed edge U -> V, node U comes before V.",
+    "key_identifiers": "[\"Prerequisites or order of tasks\",\"Directed graphs without cycles\",\"Sequencing multiple dependencies\"]",
+    "common_problems": "[\"Course Schedule\",\"Course Schedule II\",\"Minimum Height Trees\",\"Alien Dictionary\"]",
+    "sample_template": "function topologicalSortKahn(numNodes, edges) {\n  const adj = Array.from({length: numNodes}, () => []);\n  const inDegree = Array(numNodes).fill(0);\n  for (let [u, v] of edges) {\n    adj[u].push(v);\n    inDegree[v]++;\n  }\n  const queue = [];\n  for (let i = 0; i < numNodes; i++) {\n    if (inDegree[i] === 0) queue.push(i);\n  }\n  const order = [];\n  while (queue.length > 0) {\n    let u = queue.shift();\n    order.push(u);\n    for (let v of adj[u]) {\n      inDegree[v]--;\n      if (inDegree[v] === 0) queue.push(v);\n    }\n  }\n  return order.length === numNodes ? order : [];\n}"
+  }
+]

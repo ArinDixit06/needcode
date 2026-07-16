@@ -1,0 +1,386 @@
+[
+  {
+    "id": "1",
+    "title": "Two Sum",
+    "difficulty": "Easy",
+    "category": "Arrays & Hashing",
+    "url": "https://leetcode.com/problems/two-sum/",
+    "description": "Find two numbers in an array that add up to a specific target."
+  },
+  {
+    "id": "217",
+    "title": "Contains Duplicate",
+    "difficulty": "Easy",
+    "category": "Arrays & Hashing",
+    "url": "https://leetcode.com/problems/contains-duplicate/",
+    "description": "Check if any value appears at least twice in an array."
+  },
+  {
+    "id": "242",
+    "title": "Valid Anagram",
+    "difficulty": "Easy",
+    "category": "Arrays & Hashing",
+    "url": "https://leetcode.com/problems/valid-anagram/",
+    "description": "Determine if two strings are anagrams of each other."
+  },
+  {
+    "id": "49",
+    "title": "Group Anagrams",
+    "difficulty": "Medium",
+    "category": "Arrays & Hashing",
+    "url": "https://leetcode.com/problems/group-anagrams/",
+    "description": "Group an array of strings into sub-lists of anagrams."
+  },
+  {
+    "id": "347",
+    "title": "Top K Frequent Elements",
+    "difficulty": "Medium",
+    "category": "Arrays & Hashing",
+    "url": "https://leetcode.com/problems/top-k-frequent-elements/",
+    "description": "Find the k most frequent elements in an integer array."
+  },
+  {
+    "id": "238",
+    "title": "Product of Array Except Self",
+    "difficulty": "Medium",
+    "category": "Arrays & Hashing",
+    "url": "https://leetcode.com/problems/product-of-array-except-self/",
+    "description": "Return an array where each element is the product of all other elements."
+  },
+  {
+    "id": "128",
+    "title": "Longest Consecutive Sequence",
+    "difficulty": "Hard",
+    "category": "Arrays & Hashing",
+    "url": "https://leetcode.com/problems/longest-consecutive-sequence/",
+    "description": "Find the length of the longest consecutive elements sequence in an unsorted array."
+  },
+  {
+    "id": "125",
+    "title": "Valid Palindrome",
+    "difficulty": "Easy",
+    "category": "Two Pointers",
+    "url": "https://leetcode.com/problems/valid-palindrome/",
+    "description": "Determine if a string is a palindrome, ignoring cases and non-alphanumeric characters."
+  },
+  {
+    "id": "15",
+    "title": "3Sum",
+    "difficulty": "Medium",
+    "category": "Two Pointers",
+    "url": "https://leetcode.com/problems/3sum/",
+    "description": "Find all unique triplets in the array that sum up to zero."
+  },
+  {
+    "id": "11",
+    "title": "Container With Most Water",
+    "difficulty": "Medium",
+    "category": "Two Pointers",
+    "url": "https://leetcode.com/problems/container-with-most-water/",
+    "description": "Find two lines that together with the x-axis forms a container containing the most water."
+  },
+  {
+    "id": "42",
+    "title": "Trapping Rain Water",
+    "difficulty": "Hard",
+    "category": "Two Pointers",
+    "url": "https://leetcode.com/problems/trapping-rain-water/",
+    "description": "Calculate how much water can be trapped after raining on an elevation map."
+  },
+  {
+    "id": "121",
+    "title": "Best Time to Buy and Sell Stock",
+    "difficulty": "Easy",
+    "category": "Sliding Window",
+    "url": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/",
+    "description": "Find the maximum profit you can achieve by buying and selling a stock."
+  },
+  {
+    "id": "3",
+    "title": "Longest Substring Without Repeating Characters",
+    "difficulty": "Medium",
+    "category": "Sliding Window",
+    "url": "https://leetcode.com/problems/longest-substring-without-repeating-characters/",
+    "description": "Find the length of the longest substring without repeating characters."
+  },
+  {
+    "id": "424",
+    "title": "Longest Repeating Character Replacement",
+    "difficulty": "Medium",
+    "category": "Sliding Window",
+    "url": "https://leetcode.com/problems/longest-repeating-character-replacement/",
+    "description": "Find the length of the longest substring containing the same letter after replacement."
+  },
+  {
+    "id": "76",
+    "title": "Minimum Window Substring",
+    "difficulty": "Hard",
+    "category": "Sliding Window",
+    "url": "https://leetcode.com/problems/minimum-window-substring/",
+    "description": "Find the minimum window in a string which contains all the characters of another string."
+  },
+  {
+    "id": "20",
+    "title": "Valid Parentheses",
+    "difficulty": "Easy",
+    "category": "Stack",
+    "url": "https://leetcode.com/problems/valid-parentheses/",
+    "description": "Determine if the input string brackets are closed in the correct order and type."
+  },
+  {
+    "id": "155",
+    "title": "Min Stack",
+    "difficulty": "Medium",
+    "category": "Stack",
+    "url": "https://leetcode.com/problems/min-stack/",
+    "description": "Design a stack that supports push, pop, top, and retrieving the minimum element in constant time."
+  },
+  {
+    "id": "739",
+    "title": "Daily Temperatures",
+    "difficulty": "Medium",
+    "category": "Stack",
+    "url": "https://leetcode.com/problems/daily-temperatures/",
+    "description": "Calculate the number of days to wait until a warmer temperature."
+  },
+  {
+    "id": "84",
+    "title": "Largest Rectangle in Histogram",
+    "difficulty": "Hard",
+    "category": "Stack",
+    "url": "https://leetcode.com/problems/largest-rectangle-in-histogram/",
+    "description": "Find the area of the largest rectangle in a histogram."
+  },
+  {
+    "id": "704",
+    "title": "Binary Search",
+    "difficulty": "Easy",
+    "category": "Binary Search",
+    "url": "https://leetcode.com/problems/binary-search/",
+    "description": "Implement a basic binary search algorithm to find a target in a sorted array."
+  },
+  {
+    "id": "74",
+    "title": "Search a 2D Matrix",
+    "difficulty": "Medium",
+    "category": "Binary Search",
+    "url": "https://leetcode.com/problems/search-a-2d-matrix/",
+    "description": "Search for a target value in an m x n integer matrix with sorted properties."
+  },
+  {
+    "id": "33",
+    "title": "Search in Rotated Sorted Array",
+    "difficulty": "Medium",
+    "category": "Binary Search",
+    "url": "https://leetcode.com/problems/search-in-rotated-sorted-array/",
+    "description": "Search for a target value in a sorted array that has been rotated."
+  },
+  {
+    "id": "4",
+    "title": "Median of Two Sorted Arrays",
+    "difficulty": "Hard",
+    "category": "Binary Search",
+    "url": "https://leetcode.com/problems/median-of-two-sorted-arrays/",
+    "description": "Find the median of two sorted arrays in O(log(m+n)) time complexity."
+  },
+  {
+    "id": "206",
+    "title": "Reverse Linked List",
+    "difficulty": "Easy",
+    "category": "Linked List",
+    "url": "https://leetcode.com/problems/reverse-linked-list/",
+    "description": "Reverse a singly linked list."
+  },
+  {
+    "id": "21",
+    "title": "Merge Two Sorted Lists",
+    "difficulty": "Easy",
+    "category": "Linked List",
+    "url": "https://leetcode.com/problems/merge-two-sorted-lists/",
+    "description": "Merge two sorted linked lists and return it as a sorted list."
+  },
+  {
+    "id": "141",
+    "title": "Linked List Cycle",
+    "difficulty": "Easy",
+    "category": "Linked List",
+    "url": "https://leetcode.com/problems/linked-list-cycle/",
+    "description": "Determine if a linked list has a cycle in it."
+  },
+  {
+    "id": "143",
+    "title": "Reorder List",
+    "difficulty": "Medium",
+    "category": "Linked List",
+    "url": "https://leetcode.com/problems/reorder-list/",
+    "description": "Reorder a linked list such that L0 → Ln → L1 → Ln-1 → L2 → Ln-2..."
+  },
+  {
+    "id": "19",
+    "title": "Remove Nth Node From End of List",
+    "difficulty": "Medium",
+    "category": "Linked List",
+    "url": "https://leetcode.com/problems/remove-nth-node-from-end-of-list/",
+    "description": "Remove the nth node from the end of the list and return its head."
+  },
+  {
+    "id": "23",
+    "title": "Merge k Sorted Lists",
+    "difficulty": "Hard",
+    "category": "Linked List",
+    "url": "https://leetcode.com/problems/merge-k-sorted-lists/",
+    "description": "Merge k sorted linked lists and return it as one sorted linked list."
+  },
+  {
+    "id": "226",
+    "title": "Invert Binary Tree",
+    "difficulty": "Easy",
+    "category": "Trees",
+    "url": "https://leetcode.com/problems/invert-binary-tree/",
+    "description": "Invert a binary tree (flip it horizontally)."
+  },
+  {
+    "id": "104",
+    "title": "Maximum Depth of Binary Tree",
+    "difficulty": "Easy",
+    "category": "Trees",
+    "url": "https://leetcode.com/problems/maximum-depth-of-binary-tree/",
+    "description": "Find the maximum depth (height) of a binary tree."
+  },
+  {
+    "id": "102",
+    "title": "Binary Tree Level Order Traversal",
+    "difficulty": "Medium",
+    "category": "Trees",
+    "url": "https://leetcode.com/problems/binary-tree-level-order-traversal/",
+    "description": "Return the level order traversal of its nodes' values."
+  },
+  {
+    "id": "98",
+    "title": "Validate Binary Search Tree",
+    "difficulty": "Medium",
+    "category": "Trees",
+    "url": "https://leetcode.com/problems/validate-binary-search-tree/",
+    "description": "Determine if a binary tree is a valid binary search tree (BST)."
+  },
+  {
+    "id": "124",
+    "title": "Binary Tree Maximum Path Sum",
+    "difficulty": "Hard",
+    "category": "Trees",
+    "url": "https://leetcode.com/problems/binary-tree-maximum-path-sum/",
+    "description": "Find the maximum path sum in a binary tree from any node to any node."
+  },
+  {
+    "id": "703",
+    "title": "Kth Largest Element in a Stream",
+    "difficulty": "Easy",
+    "category": "Heap / Priority Queue",
+    "url": "https://leetcode.com/problems/kth-largest-element-in-a-stream/",
+    "description": "Design a class to find the kth largest element in a stream."
+  },
+  {
+    "id": "215",
+    "title": "Kth Largest Element in an Array",
+    "difficulty": "Medium",
+    "category": "Heap / Priority Queue",
+    "url": "https://leetcode.com/problems/kth-largest-element-in-an-array/",
+    "description": "Find the kth largest element in an unsorted array."
+  },
+  {
+    "id": "295",
+    "title": "Find Median from Data Stream",
+    "difficulty": "Hard",
+    "category": "Heap / Priority Queue",
+    "url": "https://leetcode.com/problems/find-median-from-data-stream/",
+    "description": "Design a data structure that supports adding numbers and finding the median."
+  },
+  {
+    "id": "78",
+    "title": "Subsets",
+    "difficulty": "Medium",
+    "category": "Backtracking",
+    "url": "https://leetcode.com/problems/subsets/",
+    "description": "Given an integer array, return all possible subsets (power set)."
+  },
+  {
+    "id": "39",
+    "title": "Combination Sum",
+    "difficulty": "Medium",
+    "category": "Backtracking",
+    "url": "https://leetcode.com/problems/combination-sum/",
+    "description": "Find all unique combinations in candidates where the candidate numbers sum to target."
+  },
+  {
+    "id": "51",
+    "title": "N-Queens",
+    "difficulty": "Hard",
+    "category": "Backtracking",
+    "url": "https://leetcode.com/problems/n-queens/",
+    "description": "Place n queens on an n×n chessboard such that no two queens attack each other."
+  },
+  {
+    "id": "200",
+    "title": "Number of Islands",
+    "difficulty": "Medium",
+    "category": "Graphs",
+    "url": "https://leetcode.com/problems/number-of-islands/",
+    "description": "Count the number of 2D grid islands surrounded by water using DFS/BFS."
+  },
+  {
+    "id": "133",
+    "title": "Clone Graph",
+    "difficulty": "Medium",
+    "category": "Graphs",
+    "url": "https://leetcode.com/problems/clone-graph/",
+    "description": "Return a deep copy of a connected undirected graph."
+  },
+  {
+    "id": "269",
+    "title": "Alien Dictionary",
+    "difficulty": "Hard",
+    "category": "Graphs",
+    "url": "https://leetcode.com/problems/alien-dictionary/",
+    "description": "Derive the alphabetical order of letters in an alien language from a sorted list of words."
+  },
+  {
+    "id": "70",
+    "title": "Climbing Stairs",
+    "difficulty": "Easy",
+    "category": "Dynamic Programming",
+    "url": "https://leetcode.com/problems/climbing-stairs/",
+    "description": "Calculate how many distinct ways you can climb to the top of a staircase."
+  },
+  {
+    "id": "322",
+    "title": "Coin Change",
+    "difficulty": "Medium",
+    "category": "Dynamic Programming",
+    "url": "https://leetcode.com/problems/coin-change/",
+    "description": "Find the fewest number of coins needed to make up a given amount."
+  },
+  {
+    "id": "300",
+    "title": "Longest Increasing Subsequence",
+    "difficulty": "Medium",
+    "category": "Dynamic Programming",
+    "url": "https://leetcode.com/problems/longest-increasing-subsequence/",
+    "description": "Find the length of the longest strictly increasing subsequence in an array."
+  },
+  {
+    "id": "1143",
+    "title": "Longest Common Subsequence",
+    "difficulty": "Medium",
+    "category": "Dynamic Programming",
+    "url": "https://leetcode.com/problems/longest-common-subsequence/",
+    "description": "Find the length of the longest common subsequence of two strings."
+  },
+  {
+    "id": "72",
+    "title": "Edit Distance",
+    "difficulty": "Hard",
+    "category": "Dynamic Programming",
+    "url": "https://leetcode.com/problems/edit-distance/",
+    "description": "Find the minimum number of operations required to convert one string to another."
+  }
+]
