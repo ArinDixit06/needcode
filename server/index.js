@@ -1214,7 +1214,13 @@ const getSolvedQuestions = async () => {
           q.category, 
           q.url, 
           sq.notes, 
-          sq.solved_at as "solvedAt"
+          sq.solved_at as "solvedAt",
+          sq.brute_force_theory as "bruteForceTheory",
+          sq.optimized_theory as "optimizedTheory",
+          sq.repetition,
+          sq.review_interval as "reviewInterval",
+          sq.easiness,
+          sq.next_review_at as "nextReviewAt"
         FROM solved_questions sq
         JOIN questions q ON sq.question_id = q.id
         ORDER BY sq.solved_at DESC
@@ -1705,6 +1711,14 @@ const initDb = async () => {
         solved_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
+    
+    // Solved questions spaced repetition and theory migrations
+    await client.query('ALTER TABLE solved_questions ADD COLUMN IF NOT EXISTS brute_force_theory TEXT;');
+    await client.query('ALTER TABLE solved_questions ADD COLUMN IF NOT EXISTS optimized_theory TEXT;');
+    await client.query('ALTER TABLE solved_questions ADD COLUMN IF NOT EXISTS repetition INT DEFAULT 0;');
+    await client.query('ALTER TABLE solved_questions ADD COLUMN IF NOT EXISTS review_interval INT DEFAULT 1;');
+    await client.query('ALTER TABLE solved_questions ADD COLUMN IF NOT EXISTS easiness DOUBLE PRECISION DEFAULT 2.5;');
+    await client.query('ALTER TABLE solved_questions ADD COLUMN IF NOT EXISTS next_review_at TIMESTAMP DEFAULT NOW();');
 
     // Create DSA Progress Tracker Table
     await client.query(`
@@ -2266,7 +2280,21 @@ app.get('/api/recommendations', async (req, res) => {
 
 // POST mark a question as solved
 app.post('/api/solved', async (req, res) => {
-  const { questionId, notes, difficulty, category, title, url, solvedAt } = req.body;
+  const { 
+    questionId, 
+    notes, 
+    difficulty, 
+    category, 
+    title, 
+    url, 
+    solvedAt,
+    bruteForceTheory,
+    optimizedTheory,
+    repetition,
+    reviewInterval,
+    easiness,
+    nextReviewAt
+  } = req.body;
   
   if (!questionId) {
     return res.status(400).json({ error: 'Question ID is required' });
@@ -2292,11 +2320,33 @@ app.post('/api/solved', async (req, res) => {
 
       // Insert or update solved status
       await pool.query(`
-        INSERT INTO solved_questions (question_id, notes, solved_at)
-        VALUES ($1, $2, $3)
+        INSERT INTO solved_questions (
+          question_id, notes, solved_at, 
+          brute_force_theory, optimized_theory, 
+          repetition, review_interval, easiness, next_review_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ON CONFLICT (question_id) DO UPDATE 
-        SET notes = EXCLUDED.notes, solved_at = EXCLUDED.solved_at
-      `, [questionId, notes || '', solvedAt || new Date().toISOString()]);
+        SET 
+          notes = EXCLUDED.notes, 
+          solved_at = EXCLUDED.solved_at,
+          brute_force_theory = COALESCE(EXCLUDED.brute_force_theory, solved_questions.brute_force_theory),
+          optimized_theory = COALESCE(EXCLUDED.optimized_theory, solved_questions.optimized_theory),
+          repetition = COALESCE(EXCLUDED.repetition, solved_questions.repetition),
+          review_interval = COALESCE(EXCLUDED.review_interval, solved_questions.review_interval),
+          easiness = COALESCE(EXCLUDED.easiness, solved_questions.easiness),
+          next_review_at = COALESCE(EXCLUDED.next_review_at, solved_questions.next_review_at)
+      `, [
+        questionId, 
+        notes || '', 
+        solvedAt || new Date().toISOString(),
+        bruteForceTheory || null,
+        optimizedTheory || null,
+        repetition !== undefined ? parseInt(repetition) : null,
+        reviewInterval !== undefined ? parseInt(reviewInterval) : null,
+        easiness !== undefined ? parseFloat(easiness) : null,
+        nextReviewAt || null
+      ]);
 
       return res.json({ success: true });
     }
@@ -2320,14 +2370,22 @@ app.post('/api/solved', async (req, res) => {
     }
 
     const existingSolvedIdx = solvedList.findIndex(s => s.questionId === questionId);
+    const existingItem = existingSolvedIdx >= 0 ? solvedList[existingSolvedIdx] : {};
+    
     const solvedItem = {
       questionId,
-      title: title || (question ? question.title : 'Unknown Question'),
-      difficulty: difficulty || (question ? question.difficulty : 'Medium'),
-      category: category || (question ? question.category : 'General'),
-      url: url || (question ? question.url : ''),
-      notes: notes || '',
-      solvedAt: solvedAt || new Date().toISOString()
+      title: title || existingItem.title || (question ? question.title : 'Unknown Question'),
+      difficulty: difficulty || existingItem.difficulty || (question ? question.difficulty : 'Medium'),
+      category: category || existingItem.category || (question ? question.category : 'General'),
+      url: url || existingItem.url || (question ? question.url : ''),
+      notes: notes !== undefined ? notes : (existingItem.notes || ''),
+      solvedAt: solvedAt || existingItem.solvedAt || new Date().toISOString(),
+      bruteForceTheory: bruteForceTheory !== undefined ? bruteForceTheory : (existingItem.bruteForceTheory || ''),
+      optimizedTheory: optimizedTheory !== undefined ? optimizedTheory : (existingItem.optimizedTheory || ''),
+      repetition: repetition !== undefined ? parseInt(repetition) : (existingItem.repetition || 0),
+      reviewInterval: reviewInterval !== undefined ? parseInt(reviewInterval) : (existingItem.reviewInterval || 1),
+      easiness: easiness !== undefined ? parseFloat(easiness) : (existingItem.easiness || 2.5),
+      nextReviewAt: nextReviewAt !== undefined ? nextReviewAt : (existingItem.nextReviewAt || new Date().toISOString())
     };
 
     if (existingSolvedIdx >= 0) {

@@ -1286,8 +1286,19 @@ function App() {
     }
   };
 
-  // Edit Solved Question Notes
-  const handleUpdateSolvedNotes = async (questionId: string, newNotes: string) => {
+  // Edit Solved Question Notes / Save Spaced Repetition Review
+  const handleUpdateSolvedNotes = async (
+    questionId: string, 
+    newNotes: string,
+    payload?: {
+      bruteForceTheory?: string;
+      optimizedTheory?: string;
+      repetition?: number;
+      reviewInterval?: number;
+      easiness?: number;
+      nextReviewAt?: string;
+    }
+  ) => {
     const solvedItem = solved.find(s => s.questionId === questionId);
     if (!solvedItem) return;
 
@@ -1302,18 +1313,19 @@ function App() {
           category: solvedItem.category,
           url: solvedItem.url,
           notes: newNotes,
-          solvedAt: solvedItem.solvedAt
+          solvedAt: solvedItem.solvedAt,
+          ...payload
         })
       });
 
       if (res.ok) {
-        showToast('Solved notes saved successfully!', 'success');
+        showToast('Solved question review successfully scheduled!', 'success');
         fetchData(); // Refresh the solved list and overview metrics
       } else {
-        showToast('Failed to save solved notes', 'error');
+        showToast('Failed to save review details', 'error');
       }
     } catch (err) {
-      showToast('Failed to save notes due to network error', 'error');
+      showToast('Failed to save review due to network error', 'error');
     }
   };
 

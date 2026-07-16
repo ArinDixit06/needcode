@@ -15,6 +15,7 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
+  Calendar,
 } from 'lucide-react';
 
 /* ─── Types ───────────────────────────────────────────────────────────────── */
@@ -28,6 +29,12 @@ interface SolvedQuestion {
   solvedAt: string;
   language?: string;
   timeTaken?: string;
+  bruteForceTheory?: string;
+  optimizedTheory?: string;
+  repetition?: number;
+  reviewInterval?: number;
+  easiness?: number;
+  nextReviewAt?: string;
 }
 
 interface Pattern {
@@ -43,7 +50,18 @@ interface RevisionTabProps {
   solved: SolvedQuestion[];
   patterns: Pattern[];
   onExplainPattern?: (pattern: string) => void;
-  onUpdateSolvedNotes?: (id: string, notes: string) => void;
+  onUpdateSolvedNotes?: (
+    id: string,
+    notes: string,
+    payload?: {
+      bruteForceTheory?: string;
+      optimizedTheory?: string;
+      repetition?: number;
+      reviewInterval?: number;
+      easiness?: number;
+      nextReviewAt?: string;
+    }
+  ) => void;
 }
 
 /* ─── Helpers ─────────────────────────────────────────────────────────────── */
@@ -68,6 +86,18 @@ function timeAgo(dateStr: string) {
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   if (diff < 2592000) return `${Math.floor(diff / 86400)}d ago`;
   return `${Math.floor(diff / 2592000)}mo ago`;
+}
+
+function getDueDateLabel(nextReviewAtStr?: string) {
+  if (!nextReviewAtStr) return { label: 'Ready to Review', color: '#ff4d4f', type: 'due' };
+  const d = new Date(nextReviewAtStr);
+  if (isNaN(d.getTime())) return { label: 'Ready to Review', color: '#ff4d4f', type: 'due' };
+  const diff = d.getTime() - Date.now();
+  if (diff <= 0) return { label: 'Overdue / Ready', color: '#ff4d4f', type: 'due' };
+  
+  const diffDays = Math.ceil(diff / (1000 * 3600 * 24));
+  if (diffDays === 1) return { label: 'Due tomorrow', color: '#ffa940', type: 'scheduled' };
+  return { label: `Due in ${diffDays} days`, color: '#52c41a', type: 'scheduled' };
 }
 
 /* ─── Sub-components ──────────────────────────────────────────────────────── */
@@ -286,30 +316,86 @@ function PatternFlashcard({
   );
 }
 
-/** Solved question card for revision */
+/** Solved question card with active recall & spaced repetition review */
 function SolvedCard({
   q,
   index,
-  onUpdateNotes,
+  onUpdateSolvedNotes,
 }: {
   q: SolvedQuestion;
   index: number;
-  onUpdateNotes?: (id: string, notes: string) => void;
+  onUpdateSolvedNotes?: RevisionTabProps['onUpdateSolvedNotes'];
 }) {
   const [showNotes, setShowNotes] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [notesText, setNotesText] = useState(q.notes || '');
 
+  // Active Recall & Spaced Repetition states
+  const [showActiveRecall, setShowActiveRecall] = useState(false);
+  const [bruteForceInput, setBruteForceInput] = useState(q.bruteForceTheory || '');
+  const [optimizedInput, setOptimizedInput] = useState(q.optimizedTheory || '');
+  const [recallSubmitted, setRecallSubmitted] = useState(false);
+
   useEffect(() => {
     setNotesText(q.notes || '');
-  }, [q.notes]);
+    setBruteForceInput(q.bruteForceTheory || '');
+    setOptimizedInput(q.optimizedTheory || '');
+  }, [q.notes, q.bruteForceTheory, q.optimizedTheory]);
 
-  const handleSave = () => {
-    if (onUpdateNotes) {
-      onUpdateNotes(q.questionId, notesText);
+  const handleNotesSave = () => {
+    if (onUpdateSolvedNotes) {
+      onUpdateSolvedNotes(q.questionId, notesText);
     }
     setIsEditing(false);
   };
+
+  const handleRecallSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bruteForceInput.trim() || !optimizedInput.trim()) return;
+    setRecallSubmitted(true);
+  };
+
+  const handleScheduleSRS = (rating: number) => {
+    const prevRep = q.repetition || 0;
+    const prevInterval = q.reviewInterval || 1;
+    const prevEasiness = q.easiness || 2.5;
+
+    // SM-2 Spaced Repetition Formula
+    let nextRep = rating < 3 ? 0 : prevRep + 1;
+    let nextEasiness = Math.max(
+      1.3,
+      prevEasiness + (0.1 - (5 - rating) * (0.08 + (5 - rating) * 0.02))
+    );
+    let nextInterval = 1;
+
+    if (nextRep === 1) {
+      nextInterval = 1;
+    } else if (nextRep === 2) {
+      nextInterval = 3;
+    } else {
+      nextInterval = Math.round(prevInterval * nextEasiness);
+    }
+
+    const nextReviewDate = new Date();
+    nextReviewDate.setDate(nextReviewDate.getDate() + nextInterval);
+
+    if (onUpdateSolvedNotes) {
+      onUpdateSolvedNotes(q.questionId, q.notes, {
+        bruteForceTheory: bruteForceInput,
+        optimizedTheory: optimizedInput,
+        repetition: nextRep,
+        reviewInterval: nextInterval,
+        easiness: nextEasiness,
+        nextReviewAt: nextReviewDate.toISOString()
+      });
+    }
+
+    // Reset Review module states
+    setShowActiveRecall(false);
+    setRecallSubmitted(false);
+  };
+
+  const dueInfo = getDueDateLabel(q.nextReviewAt);
 
   return (
     <div
@@ -339,6 +425,7 @@ function SolvedCard({
           gap: '10px',
           background: 'var(--bg-sidebar)',
           borderBottom: '1px solid var(--border-color)',
+          flexWrap: 'wrap'
         }}
       >
         <span
@@ -369,29 +456,9 @@ function SolvedCard({
               flexWrap: 'wrap',
             }}
           >
-            <a
-              href={q.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontWeight: 600,
-                fontSize: '0.88rem',
-                color: 'var(--text-primary)',
-                textDecoration: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-              onMouseEnter={(e) =>
-                ((e.currentTarget as HTMLAnchorElement).style.color = 'var(--accent-primary)')
-              }
-              onMouseLeave={(e) =>
-                ((e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)')
-              }
-            >
+            <span style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
               {q.title}
-              {q.url && <ExternalLink size={11} style={{ opacity: 0.5 }} />}
-            </a>
+            </span>
 
             <Pill
               label={q.difficulty}
@@ -401,6 +468,24 @@ function SolvedCard({
             <span className="badge category" style={{ fontSize: '0.68rem' }}>
               {q.category}
             </span>
+
+            {/* Spaced Repetition Due Status Badge */}
+            <span
+              style={{
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                color: dueInfo.color,
+                background: `${dueInfo.color}15`,
+                padding: '2px 8px',
+                borderRadius: '999px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <Calendar size={10} />
+              {dueInfo.label}
+            </span>
           </div>
         </div>
 
@@ -408,7 +493,7 @@ function SolvedCard({
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
+            gap: '8px',
             flexShrink: 0,
           }}
         >
@@ -436,26 +521,169 @@ function SolvedCard({
             {showNotes ? ' Hide' : ' Notes'}
           </button>
 
-          {onUpdateNotes && (
+          {onUpdateSolvedNotes && (
             <button
               className="button button-ghost"
-              style={{ padding: '3px 7px', fontSize: '0.68rem', color: 'var(--accent-primary)', border: '1px solid var(--border-color)' }}
+              style={{ padding: '3px 7px', fontSize: '0.68rem', border: '1px solid var(--border-color)' }}
               onClick={() => {
                 setShowNotes(true);
                 setIsEditing((e) => !e);
               }}
             >
-              Edit
+              Edit Notes
             </button>
           )}
+
+          <button
+            className="button button-primary"
+            style={{ padding: '4px 10px', fontSize: '0.72rem', background: 'var(--accent-primary)', border: 'none' }}
+            onClick={() => {
+              setShowActiveRecall((s) => !s);
+              setRecallSubmitted(false);
+            }}
+          >
+            {showActiveRecall ? 'Cancel Review' : 'Attempt Review'}
+          </button>
         </div>
       </div>
+
+      {/* Spaced Repetition & Recall Interactive Panel */}
+      {showActiveRecall && (
+        <div
+          style={{
+            padding: '16px',
+            background: 'var(--bg-sidebar)',
+            borderBottom: '1px solid var(--border-color)',
+            animation: 'fadeIn 0.2s ease',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Brain size={16} style={{ color: 'var(--accent-primary)' }} />
+            <h4 style={{ fontSize: '0.85rem', fontWeight: 700 }}>Step 1: Write Solving Theories (Active Recall)</h4>
+          </div>
+          
+          <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
+            Before attempting the LeetCode coding practice, write down the strategies to commit them to long-term memory.
+          </p>
+
+          {!recallSubmitted ? (
+            <form onSubmit={handleRecallSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                  Brute Force Approach
+                </label>
+                <textarea
+                  className="input-field"
+                  rows={2}
+                  placeholder="e.g. Loop twice to check all pairs. Time O(N²), Space O(1)."
+                  value={bruteForceInput}
+                  onChange={(e) => setBruteForceInput(e.target.value)}
+                  style={{ width: '100%', fontSize: '0.8rem', resize: 'vertical' }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                  Optimized Approach
+                </label>
+                <textarea
+                  className="input-field"
+                  rows={2}
+                  placeholder="e.g. Use a hashmap to check for target complement in one pass. Time O(N), Space O(N)."
+                  value={optimizedInput}
+                  onChange={(e) => setOptimizedInput(e.target.value)}
+                  style={{ width: '100%', fontSize: '0.8rem', resize: 'vertical' }}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="submit" className="button button-primary" style={{ padding: '6px 12px', fontSize: '0.78rem' }}>
+                  Verify & Unlock Attempt
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+              padding: '14px',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--bg-app)',
+              animation: 'fadeIn 0.15s ease'
+            }}>
+              <div>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Locked in Brute Force Theory:</span>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-primary)', marginTop: '4px', whiteSpace: 'pre-wrap' }}>{bruteForceInput}</p>
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Locked in Optimized Theory:</span>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-primary)', marginTop: '4px', whiteSpace: 'pre-wrap' }}>{optimizedInput}</p>
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Step 2: Solve on LeetCode</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Click link to code or resolve the problem now</span>
+                  </div>
+                  <a
+                    href={q.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="button button-secondary"
+                    style={{ padding: '6px 14px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px', borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)' }}
+                  >
+                    Open LeetCode <ExternalLink size={12} />
+                  </a>
+                </div>
+
+                <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '10px' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, display: 'block', marginBottom: '8px' }}>
+                    Step 3: Rate your recall performance to schedule the next review
+                  </span>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    <button
+                      className="button"
+                      onClick={() => handleScheduleSRS(1)}
+                      style={{ padding: '6px 12px', fontSize: '0.72rem', background: '#ff4d4f20', color: '#ff4d4f', border: '1px solid #ff4d4f40', flex: 1 }}
+                    >
+                      🔴 Hard / Forgot (Review Tomorrow)
+                    </button>
+                    <button
+                      className="button"
+                      onClick={() => handleScheduleSRS(3)}
+                      style={{ padding: '6px 12px', fontSize: '0.72rem', background: '#ffa94020', color: '#ffa940', border: '1px solid #ffa94040', flex: 1 }}
+                    >
+                      🟡 Medium (Review in 3d)
+                    </button>
+                    <button
+                      className="button"
+                      onClick={() => handleScheduleSRS(5)}
+                      style={{ padding: '6px 12px', fontSize: '0.72rem', background: '#52c41a20', color: '#52c41a', border: '1px solid #52c41a40', flex: 1 }}
+                    >
+                      🟢 Perfect (Review in {q.easiness ? Math.round((q.reviewInterval || 1) * (q.easiness || 2.5)) : '14'}d)
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Notes section */}
       {showNotes && (
         <div
           style={{
-            padding: '10px 16px',
+            padding: '12px 16px',
             fontSize: '0.8rem',
             color: 'var(--text-secondary)',
             lineHeight: 1.65,
@@ -482,7 +710,7 @@ function SolvedCard({
                   resize: 'vertical',
                   outline: 'none',
                 }}
-                placeholder="Write solving notes, intuition, complexity takeaways..."
+                placeholder="Write solving notes, complexity takeaways..."
               />
               <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
                 <button
@@ -498,15 +726,33 @@ function SolvedCard({
                 <button
                   className="button button-primary"
                   style={{ padding: '3px 8px', fontSize: '0.72rem' }}
-                  onClick={handleSave}
+                  onClick={handleNotesSave}
                 >
                   Save Notes
                 </button>
               </div>
             </div>
           ) : (
-            <div style={{ whiteSpace: 'pre-wrap' }}>
-              {q.notes || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No notes recorded. Click Edit to add some!</span>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div>
+                <p style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Confidence Notes:</p>
+                <p style={{ whiteSpace: 'pre-wrap', marginTop: '2px' }}>
+                  {q.notes || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No notes recorded. Click Edit to add some!</span>}
+                </p>
+              </div>
+              
+              {(q.bruteForceTheory || q.optimizedTheory) && (
+                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '8px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)' }}>Brute Force strategy:</span>
+                    <p style={{ fontSize: '0.76rem', color: 'var(--text-primary)', marginTop: '2px' }}>{q.bruteForceTheory || 'Not recorded'}</p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)' }}>Optimized strategy:</span>
+                    <p style={{ fontSize: '0.76rem', color: 'var(--text-primary)', marginTop: '2px' }}>{q.optimizedTheory || 'Not recorded'}</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -695,6 +941,7 @@ const RevisionTab: React.FC<RevisionTabProps> = ({ solved, patterns, onExplainPa
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDiff, setFilterDiff] = useState<'All' | 'Easy' | 'Medium' | 'Hard'>('All');
   const [filterCat, setFilterCat] = useState('All');
+  const [filterStatus, setFilterStatus] = useState<'All' | 'Due' | 'Scheduled'>('All');
 
   /* Derived stats */
   const stats = useMemo(() => {
@@ -703,7 +950,14 @@ const RevisionTab: React.FC<RevisionTabProps> = ({ solved, patterns, onExplainPa
     const hard = solved.filter((s) => s.difficulty === 'Hard').length;
     const cats = Array.from(new Set(solved.map((s) => s.category)));
     const withNotes = solved.filter((s) => s.notes?.trim()).length;
-    return { easy, medium, hard, total: solved.length, cats, withNotes };
+
+    // Due counts
+    const due = solved.filter((s) => {
+      if (!s.nextReviewAt) return true;
+      return new Date(s.nextReviewAt).getTime() <= Date.now();
+    }).length;
+
+    return { easy, medium, hard, total: solved.length, cats, withNotes, due };
   }, [solved]);
 
   /* Categories for filter */
@@ -712,17 +966,36 @@ const RevisionTab: React.FC<RevisionTabProps> = ({ solved, patterns, onExplainPa
     [solved],
   );
 
-  /* Filtered & sorted solved list — most recent first */
+  /* Filtered & sorted solved list — most urgent reviews first */
   const filteredSolved = useMemo(() => {
     return solved
       .filter((s) => {
         const matchQ = s.title.toLowerCase().includes(searchQuery.toLowerCase());
         const matchD = filterDiff === 'All' || s.difficulty === filterDiff;
         const matchC = filterCat === 'All' || s.category === filterCat;
-        return matchQ && matchD && matchC;
+        
+        // Due state filters
+        const isDue = !s.nextReviewAt || new Date(s.nextReviewAt).getTime() <= Date.now();
+        const matchStatus = 
+          filterStatus === 'All' || 
+          (filterStatus === 'Due' && isDue) || 
+          (filterStatus === 'Scheduled' && !isDue);
+
+        return matchQ && matchD && matchC && matchStatus;
       })
-      .sort((a, b) => new Date(b.solvedAt).getTime() - new Date(a.solvedAt).getTime());
-  }, [solved, searchQuery, filterDiff, filterCat]);
+      .sort((a, b) => {
+        // Sort: overdue/due first, then by nextReviewAt asc, then by solvedAt desc
+        const aDue = !a.nextReviewAt || new Date(a.nextReviewAt).getTime() <= Date.now();
+        const bDue = !b.nextReviewAt || new Date(b.nextReviewAt).getTime() <= Date.now();
+        if (aDue && !bDue) return -1;
+        if (!aDue && bDue) return 1;
+
+        if (a.nextReviewAt && b.nextReviewAt) {
+          return new Date(a.nextReviewAt).getTime() - new Date(b.nextReviewAt).getTime();
+        }
+        return new Date(b.solvedAt).getTime() - new Date(a.solvedAt).getTime();
+      });
+  }, [solved, searchQuery, filterDiff, filterCat, filterStatus]);
 
   /* ── Section pills */
   const sections = [
@@ -741,10 +1014,9 @@ const RevisionTab: React.FC<RevisionTabProps> = ({ solved, patterns, onExplainPa
       >
         <span style={{ fontSize: '1.25rem' }}>🔁</span>
         <div>
-          <h4 style={{ fontWeight: 600, fontSize: '0.9rem' }}>Revision Hub</h4>
+          <h4 style={{ fontWeight: 600, fontSize: '0.9rem' }}>Revision Hub (Spaced Repetition & Recall)</h4>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: '2px' }}>
-            Spaced repetition for your solved problems and algorithm patterns. Review your notes,
-            quiz yourself on patterns, and reinforce long-term retention.
+            Boost your retention with SM-2 spaced repetition and active recall checks. Solve brute force & optimized strategies before coding!
           </p>
         </div>
       </div>
@@ -790,11 +1062,11 @@ const RevisionTab: React.FC<RevisionTabProps> = ({ solved, patterns, onExplainPa
           >
             {[
               { label: 'Total Solved', value: stats.total, icon: '✅', accent: 'var(--accent-primary)' },
+              { label: 'Due for Review', value: stats.due, icon: '⚡', accent: '#ff4d4f' },
               { label: 'Easy', value: stats.easy, icon: '🟢', accent: 'var(--tag-easy-text)' },
               { label: 'Medium', value: stats.medium, icon: '🟡', accent: 'var(--tag-medium-text)' },
               { label: 'Hard', value: stats.hard, icon: '🔴', accent: 'var(--tag-hard-text)' },
               { label: 'With Notes', value: stats.withNotes, icon: '📝', accent: 'var(--accent-primary)' },
-              { label: 'Categories', value: stats.cats.length, icon: '🗂️', accent: 'var(--accent-primary)' },
             ].map((s) => (
               <div
                 key={s.label}
@@ -820,6 +1092,39 @@ const RevisionTab: React.FC<RevisionTabProps> = ({ solved, patterns, onExplainPa
               </div>
             ))}
           </div>
+
+          {/* Review Due Alert Callout */}
+          {stats.due > 0 ? (
+            <div className="notion-callout warning" style={{ margin: 0, borderLeft: '3px solid #ff4d4f' }}>
+              <span style={{ fontSize: '1.2rem' }}>⚡</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontWeight: 600, fontSize: '0.86rem' }}>{stats.due} Questions due for active review</span>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                  You have questions due or overdue for spaced repetition. Review them to prevent forgetting and lock in muscle memory!
+                </p>
+                <button
+                  className="button button-ghost"
+                  onClick={() => {
+                    setActiveSection('problems');
+                    setFilterStatus('Due');
+                  }}
+                  style={{ alignSelf: 'flex-start', marginTop: '6px', padding: '4px 10px', fontSize: '0.72rem', color: '#ff4d4f', border: '1px solid #ff4d4f40' }}
+                >
+                  Filter Due Questions
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="notion-callout info" style={{ margin: 0, borderLeft: '3px solid #52c41a' }}>
+              <span style={{ fontSize: '1.2rem' }}>🎉</span>
+              <div>
+                <span style={{ fontWeight: 600, fontSize: '0.86rem' }}>All Caught Up!</span>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                  No questions are currently due for review. Outstanding job keeping your spaced repetition catalog up-to-date!
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Category breakdown */}
           {stats.cats.length > 0 && (
@@ -907,20 +1212,6 @@ const RevisionTab: React.FC<RevisionTabProps> = ({ solved, patterns, onExplainPa
               <Brain size={14} /> Take Pattern Quiz
             </button>
           </div>
-
-          {solved.length === 0 && (
-            <div
-              className="notion-callout"
-              style={{ flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '30px', gap: '8px' }}
-            >
-              <span style={{ fontSize: '2.5rem' }}>📭</span>
-              <h4 style={{ fontWeight: 600 }}>Nothing to Revise Yet</h4>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', maxWidth: '420px' }}>
-                Head to the Curriculum or AI Path tab and mark some questions as solved. Your
-                revision sessions will appear here.
-              </p>
-            </div>
-          )}
         </div>
       )}
 
@@ -985,7 +1276,18 @@ const RevisionTab: React.FC<RevisionTabProps> = ({ solved, patterns, onExplainPa
               ))}
             </select>
 
-            {(searchQuery || filterDiff !== 'All' || filterCat !== 'All') && (
+            <select
+              className="select-field"
+              style={{ padding: '5px 8px', fontSize: '0.83rem', borderColor: filterStatus !== 'All' ? 'var(--accent-primary)' : 'var(--border-color)' }}
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as any)}
+            >
+              <option value="All">All Schedules</option>
+              <option value="Due">Due / Overdue</option>
+              <option value="Scheduled">Scheduled (Future)</option>
+            </select>
+
+            {(searchQuery || filterDiff !== 'All' || filterCat !== 'All' || filterStatus !== 'All') && (
               <button
                 className="button button-ghost"
                 style={{ padding: '5px 10px', fontSize: '0.78rem' }}
@@ -993,6 +1295,7 @@ const RevisionTab: React.FC<RevisionTabProps> = ({ solved, patterns, onExplainPa
                   setSearchQuery('');
                   setFilterDiff('All');
                   setFilterCat('All');
+                  setFilterStatus('All');
                 }}
               >
                 <RotateCcw size={11} /> Reset
@@ -1001,7 +1304,7 @@ const RevisionTab: React.FC<RevisionTabProps> = ({ solved, patterns, onExplainPa
           </div>
 
           <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            {filteredSolved.length} problem{filteredSolved.length !== 1 ? 's' : ''} · sorted by most recent
+            {filteredSolved.length} problem{filteredSolved.length !== 1 ? 's' : ''} · sorted by review urgency
           </p>
 
           {filteredSolved.length === 0 ? (
@@ -1018,7 +1321,12 @@ const RevisionTab: React.FC<RevisionTabProps> = ({ solved, patterns, onExplainPa
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {filteredSolved.map((q, i) => (
-                <SolvedCard key={q.questionId} q={q} index={i} onUpdateNotes={onUpdateSolvedNotes} />
+                <SolvedCard
+                  key={q.questionId}
+                  q={q}
+                  index={i}
+                  onUpdateSolvedNotes={onUpdateSolvedNotes}
+                />
               ))}
             </div>
           )}
