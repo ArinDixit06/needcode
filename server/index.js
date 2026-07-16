@@ -2638,7 +2638,7 @@ app.post('/api/explain', async (req, res) => {
         'Forgetting to update the character map when shrinking',
         'Edge case: empty string → return 0'
       ],
-      codeImplementation: `function lengthOfLongestSubstring(s) {\n  const seen = new Map();\n  let start = 0, maxLen = 0;\n  for (let end = 0; end < s.length; end++) {\n    if (seen.has(s[end])) {\n      start = Math.max(start, seen.get(s[end]) + 1);\n    }\n    seen.set(s[end], end);\n    maxLen = Math.max(maxLen, end - start + 1);\n  }\n  return maxLen;\n}`,
+      codeImplementation: `#include <algorithm>\n#include <string>\n#include <unordered_map>\n\nint lengthOfLongestSubstring(const std::string& s) {\n  std::unordered_map<char, int> lastSeen;\n  int start = 0;\n  int maxLength = 0;\n\n  for (int end = 0; end < static_cast<int>(s.size()); ++end) {\n    if (lastSeen.count(s[end])) {\n      start = std::max(start, lastSeen[s[end]] + 1);\n    }\n    lastSeen[s[end]] = end;\n    maxLength = std::max(maxLength, end - start + 1);\n  }\n\n  return maxLength;\n}`,
       followUpVariations: [
         'What if the string contains only lowercase letters? (Optimize space to O(26))',
         'What if you can allow at most K distinct characters?',
@@ -2673,7 +2673,7 @@ app.post('/api/explain', async (req, res) => {
   "dryRunTrace": "Step-by-step trace of the algorithm on a small example input (3–6 steps). Show variable states at each step.",
   "complexity": "Time Complexity: O(...) | Space Complexity: O(...)",
   "pitfalls": ["common pitfall 1", "common pitfall 2", "edge case 3"],
-  "codeImplementation": "Clean, beautifully indented code in JavaScript (or Python/C++ if more idiomatic). Include comments on key lines.",
+  "codeImplementation": "Clean, compilable C++17 code. Include required headers, std:: qualifiers, and concise comments on key lines.",
   "followUpVariations": ["Follow-up question 1 simulating an interviewer constraint", "Follow-up 2", "Follow-up 3"],
   "transferability": ["Other problem or pattern where this strategy directly applies 1", "2", "3"],
   "personalizedInsight": "One or two sentences referencing a specific item from the learner snapshot. Do not invent history.",
@@ -2767,7 +2767,7 @@ ${fullSchema}`;
     dryRunTrace: 'Trace unavailable.',
     complexity: 'Time Complexity: O(?) | Space Complexity: O(?)',
     pitfalls: ['Review official editorial solutions.', 'Trace the code step-by-step with simple test cases.'],
-    codeImplementation: `// Fallback placeholder for: ${topic}\nfunction solve() {\n  // Study resources on LeetCode / GeeksForGeeks\n}`,
+    codeImplementation: `#include <vector>\n\n// C++17 reference placeholder for: ${topic}\nclass Solution {\n+public:\n+  void solve() {\n+    // Review the algorithm, then implement it with a small test case.\n+  }\n+};`,
     followUpVariations: ['Check LeetCode discuss tab for follow-up questions.'],
     transferability: ['Review similar tagged problems on LeetCode.'],
     personalizedInsight,

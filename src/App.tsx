@@ -2154,7 +2154,7 @@ function App() {
                                 {explanation.codeImplementation && (
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                      <h4 style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px', margin: 0 }}>💻 Code Implementation</h4>
+                                      <h4 style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px', margin: 0 }}>💻 C++17 Reference Implementation</h4>
                                       <button 
                                         type="button"
                                         className="button button-ghost"
