@@ -1907,8 +1907,9 @@ const initDb = async () => {
     // Seed Company Questions if empty
     const checkCompanyQuestions = await client.query('SELECT COUNT(*) FROM company_questions');
     const cqCount = parseInt(checkCompanyQuestions.rows[0].count, 10);
-    if (cqCount === 0) {
-      console.log('Seeding PostgreSQL database with company-wise questions...');
+    if (cqCount < 3000) {
+      console.log('Database company questions count is low. Truncating and re-seeding PostgreSQL database...');
+      await client.query('TRUNCATE TABLE company_questions;');
       const companyData = readJsonFile(COMPANY_QUESTIONS_FILE, {});
       const allRows = [];
       
