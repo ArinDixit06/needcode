@@ -1284,6 +1284,59 @@ const setGuideTaskProgress = async (taskKey, completed) => {
 
 const normalizeForMatch = (value = '') => value.toLowerCase().replace(/[^a-z0-9]/g, '');
 
+const parseModelJson = (content) => {
+  const withoutFences = String(content)
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '')
+    .trim();
+  const firstBrace = withoutFences.indexOf('{');
+  const lastBrace = withoutFences.lastIndexOf('}');
+  const jsonText = firstBrace >= 0 && lastBrace > firstBrace
+    ? withoutFences.slice(firstBrace, lastBrace + 1)
+    : withoutFences;
+
+  try {
+    return JSON.parse(jsonText);
+  } catch (initialError) {
+    let repaired = '';
+    let inString = false;
+    let escaped = false;
+
+    for (const character of jsonText) {
+      if (inString) {
+        if (escaped) {
+          repaired += character;
+          escaped = false;
+        } else if (character === '\\') {
+          repaired += character;
+          escaped = true;
+        } else if (character === '"') {
+          repaired += character;
+          inString = false;
+        } else if (character === '\n') {
+          repaired += '\\n';
+        } else if (character === '\r') {
+          repaired += '\\r';
+        } else if (character === '\t') {
+          repaired += '\\t';
+        } else {
+          repaired += character;
+        }
+      } else {
+        repaired += character;
+        if (character === '"') inString = true;
+      }
+    }
+
+    try {
+      return JSON.parse(repaired);
+    } catch {
+      throw initialError;
+    }
+  }
+};
+
 const truncateText = (value = '', maxLength = 180) => {
   const normalized = String(value).replace(/\s+/g, ' ').trim();
   return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 3)}...` : normalized;
@@ -2608,8 +2661,7 @@ Please recommend 3-4 specific LeetCode questions that represent the best learnin
       }
 
       // Parse JSON safely
-      const cleanContent = content.trim().replace(/^```json/, '').replace(/```$/, '').trim();
-      const parsedData = JSON.parse(cleanContent);
+      const parsedData = parseModelJson(content);
 
       if (!parsedData.recommendations || !Array.isArray(parsedData.recommendations)) {
         throw new Error('Response format is missing "recommendations" array.');
@@ -2789,8 +2841,7 @@ ${fullSchema}`;
         throw new Error('Model returned empty content.');
       }
 
-      const cleanContent = content.trim().replace(/^```json/, '').replace(/```$/, '').trim();
-      const parsedData = JSON.parse(cleanContent);
+      const parsedData = parseModelJson(content);
       
       console.log(`Explanation generated successfully using: ${candidateModel}`);
       return res.json({
@@ -2817,7 +2868,7 @@ ${fullSchema}`;
     dryRunTrace: 'Trace unavailable.',
     complexity: 'Time Complexity: O(?) | Space Complexity: O(?)',
     pitfalls: ['Review official editorial solutions.', 'Trace the code step-by-step with simple test cases.'],
-    codeImplementation: `#include <vector>\n\nusing namespace std;\n\nclass Solution {\npublic:\n  void solve() {\n  }\n};`,
+    codeImplementation: '',
     followUpVariations: ['Check LeetCode discuss tab for follow-up questions.'],
     transferability: ['Review similar tagged problems on LeetCode.'],
     personalizedInsight,
