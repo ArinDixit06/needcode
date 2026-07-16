@@ -97,6 +97,10 @@ function LoadingDots({ label }: { label: string }) {
   );
 }
 
+const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+const apiFetch = (path: string, init?: RequestInit) =>
+  fetch(apiBaseUrl ? `${apiBaseUrl}${path}` : path, init);
+
 class ListNode {
   val: any;
   next: ListNode | null;
@@ -492,7 +496,7 @@ function App() {
 
   const fetchRecommendations = async () => {
     try {
-      const res = await fetch('/api/recommendations');
+      const res = await apiFetch('/api/recommendations');
       if (res.ok) {
         const data = await res.json();
         setRecommendations(data || []);
@@ -504,7 +508,7 @@ function App() {
 
   const fetchStats = async () => {
     try {
-      const res = await fetch('/api/questions/stats');
+      const res = await apiFetch('/api/questions/stats');
       if (res.ok) {
         const data = await res.json();
         setTotalCatalogCount(data.totalCount || 0);
@@ -530,7 +534,7 @@ function App() {
         category: filterCategory,
         difficulty: filterDifficulty
       });
-      const res = await fetch(`/api/questions?${queryParams.toString()}`);
+      const res = await apiFetch(`/api/questions?${queryParams.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setQuestions(data.questions || []);
@@ -543,7 +547,7 @@ function App() {
 
   const fetchExercises = async () => {
     try {
-      const res = await fetch('/api/exercises');
+      const res = await apiFetch('/api/exercises');
       if (res.ok) {
         const data = await res.json();
         setExercises(data);
@@ -640,7 +644,7 @@ function App() {
 
   const fetchPatterns = async () => {
     try {
-      const res = await fetch('/api/patterns');
+      const res = await apiFetch('/api/patterns');
       if (res.ok) {
         const data = await res.json();
         setPatternsList(data);
@@ -723,7 +727,7 @@ function App() {
 
     if (isSubmit) {
       try {
-        const res = await fetch('/api/exercises/submit', {
+        const res = await apiFetch('/api/exercises/submit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -771,7 +775,7 @@ function App() {
     const timer = setTimeout(async () => {
       setPatternSearchLoading(true);
       try {
-        const res = await fetch(`/api/patterns/search?q=${encodeURIComponent(patternSearch.trim())}`);
+        const res = await apiFetch(`/api/patterns/search?q=${encodeURIComponent(patternSearch.trim())}`);
         if (res.ok) {
           const data = await res.json();
           setPatternSearchResults(data);
@@ -791,7 +795,7 @@ function App() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const solvedRes = await fetch('/api/solved');
+      const solvedRes = await apiFetch('/api/solved');
       if (solvedRes.ok) {
         const sData = await solvedRes.json();
         setSolved(sData);
@@ -809,7 +813,7 @@ function App() {
 
   const fetchConfig = async () => {
     try {
-      const res = await fetch('/api/config');
+      const res = await apiFetch('/api/config');
       if (res.ok) {
         const data = await res.json();
         setHasServerApiKey(data.hasApiKey);
@@ -823,7 +827,7 @@ function App() {
 
   const fetchLeetCodeProfile = async () => {
     try {
-      const res = await fetch('/api/leetcode/profile');
+      const res = await apiFetch('/api/leetcode/profile');
       if (res.ok) {
         const data = await res.json();
         setLcProfile(data);
@@ -837,7 +841,7 @@ function App() {
 
   const fetchDsaStructures = async () => {
     try {
-      const res = await fetch('/api/dsa-structures');
+      const res = await apiFetch('/api/dsa-structures');
       if (res.ok) {
         const data = await res.json();
         setDsaStructures(data);
@@ -875,7 +879,7 @@ function App() {
     if (!solvingQuestion) return;
 
     try {
-      const res = await fetch('/api/solved', {
+      const res = await apiFetch('/api/solved', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -901,7 +905,7 @@ function App() {
 
   const handleDeleteSolved = async (id: string) => {
     try {
-      const res = await fetch(`/api/solved/${id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/solved/${id}`, { method: 'DELETE' });
       if (res.ok) {
         showToast('Question removed from solved list', 'info');
         fetchData();
@@ -928,7 +932,7 @@ function App() {
   const handleSyncLeetCode = async () => {
     try {
       setSyncing(true);
-      const res = await fetch('/api/leetcode/sync', { method: 'POST' });
+      const res = await apiFetch('/api/leetcode/sync', { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         if (data.syncedCount > 0) {
@@ -953,7 +957,7 @@ function App() {
     try {
       setExtracting(true);
       showToast('Extracting all LeetCode problems... This will take a few seconds.', 'info');
-      const res = await fetch('/api/leetcode/import-all', { method: 'POST' });
+      const res = await apiFetch('/api/leetcode/import-all', { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         showToast(data.message, 'success');
@@ -975,7 +979,7 @@ function App() {
   // Silent sync in background
   const silentSyncLeetCode = async () => {
     try {
-      const res = await fetch('/api/leetcode/sync', { method: 'POST' });
+      const res = await apiFetch('/api/leetcode/sync', { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         if (data.syncedCount > 0) {
@@ -998,7 +1002,7 @@ function App() {
     }
 
     try {
-      const res = await fetch('/api/questions', {
+      const res = await apiFetch('/api/questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1032,7 +1036,7 @@ function App() {
   const handleGetRecommendations = async () => {
     try {
       setRecsLoading(true);
-      const res = await fetch('/api/recommend', {
+      const res = await apiFetch('/api/recommend', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1077,7 +1081,7 @@ function App() {
       setExplainLoading(true);
       setExplanation(null);
       
-      const res = await fetch('/api/explain', {
+      const res = await apiFetch('/api/explain', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1127,7 +1131,7 @@ function App() {
       setHintLoading(true);
       setExplanation(null);
       
-      const res = await fetch('/api/explain', {
+      const res = await apiFetch('/api/explain', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1173,7 +1177,7 @@ function App() {
   // Update DSA status
   const handleUpdateDsaStatus = async (id: string, newStatus: 'Not Started' | 'Learning' | 'Mastered', currentNotes?: string) => {
     try {
-      const res = await fetch('/api/dsa-structures', {
+      const res = await apiFetch('/api/dsa-structures', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, status: newStatus, notes: currentNotes || '' })
@@ -1198,7 +1202,7 @@ function App() {
     if (!selectedDsaToEdit) return;
 
     try {
-      const res = await fetch('/api/dsa-structures', {
+      const res = await apiFetch('/api/dsa-structures', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
