@@ -2688,7 +2688,7 @@ app.post('/api/explain', async (req, res) => {
         'Forgetting to update the character map when shrinking',
         'Edge case: empty string → return 0'
       ],
-      codeImplementation: `#include <algorithm>\n#include <string>\n#include <unordered_map>\n\nclass Solution {\n+public:\n+  int lengthOfLongestSubstring(std::string s) {\n+    std::unordered_map<char, int> lastSeen;\n+    int start = 0;\n+    int maxLength = 0;\n+\n+    for (int end = 0; end < static_cast<int>(s.size()); ++end) {\n+      if (lastSeen.count(s[end])) {\n+        start = std::max(start, lastSeen[s[end]] + 1);\n+      }\n+      lastSeen[s[end]] = end;\n+      maxLength = std::max(maxLength, end - start + 1);\n+    }\n+\n+    return maxLength;\n+  }\n+};`,
+      codeImplementation: `#include <algorithm>\n#include <string>\n#include <unordered_map>\n\nusing namespace std;\n\nclass Solution {\npublic:\n  int lengthOfLongestSubstring(string s) {\n    unordered_map<char, int> lastSeen;\n    int start = 0;\n    int maxLength = 0;\n\n    for (int end = 0; end < static_cast<int>(s.size()); ++end) {\n      if (lastSeen.count(s[end])) {\n        start = max(start, lastSeen[s[end]] + 1);\n      }\n      lastSeen[s[end]] = end;\n      maxLength = max(maxLength, end - start + 1);\n    }\n\n    return maxLength;\n  }\n};`,
       followUpVariations: [
         'What if the string contains only lowercase letters? (Optimize space to O(26))',
         'What if you can allow at most K distinct characters?',
@@ -2723,7 +2723,7 @@ app.post('/api/explain', async (req, res) => {
   "dryRunTrace": "Step-by-step trace of the algorithm on a small example input (3–6 steps). Show variable states at each step.",
   "complexity": "Time Complexity: O(...) | Space Complexity: O(...)",
   "pitfalls": ["common pitfall 1", "common pitfall 2", "edge case 3"],
-  "codeImplementation": "Clean C++17 in LeetCode submission format: include necessary headers, define class Solution with the expected public method signature, and never include main(). Use <algorithm> and standard helpers such as std::sort, std::max, std::min, or std::reverse whenever they make the solution clearer. Include concise comments only on key lines.",
+  "codeImplementation": "Clean C++17 in LeetCode submission format: include necessary headers, then using namespace std;, then class Solution with the expected public method signature. Never include main() or code comments. Use <algorithm> and standard helpers such as sort, max, min, or reverse whenever they make the solution clearer.",
   "followUpVariations": ["Follow-up question 1 simulating an interviewer constraint", "Follow-up 2", "Follow-up 3"],
   "transferability": ["Other problem or pattern where this strategy directly applies 1", "2", "3"],
   "personalizedInsight": "One or two sentences referencing a specific item from the learner snapshot. Do not invent history.",
@@ -2817,7 +2817,7 @@ ${fullSchema}`;
     dryRunTrace: 'Trace unavailable.',
     complexity: 'Time Complexity: O(?) | Space Complexity: O(?)',
     pitfalls: ['Review official editorial solutions.', 'Trace the code step-by-step with simple test cases.'],
-    codeImplementation: `#include <vector>\n\n// C++17 reference placeholder for: ${topic}\nclass Solution {\n+public:\n+  void solve() {\n+    // Review the algorithm, then implement it with a small test case.\n+  }\n+};`,
+    codeImplementation: `#include <vector>\n\nusing namespace std;\n\nclass Solution {\npublic:\n  void solve() {\n  }\n};`,
     followUpVariations: ['Check LeetCode discuss tab for follow-up questions.'],
     transferability: ['Review similar tagged problems on LeetCode.'],
     personalizedInsight,
