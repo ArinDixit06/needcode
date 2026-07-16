@@ -2585,6 +2585,7 @@ app.post('/api/recommend', async (req, res) => {
   const systemPrompt = `You are a world-class algorithm coach and LeetCode mentor.
 Your job is to recommend exactly 3 to 4 LeetCode questions that the user should solve next from their structured learning snapshot.
 Use the focus goal and gaps to select questions. Reasons must explicitly mention a concrete number, status, or note from the snapshot when one exists; never invent user history.
+Write every response field in English only.
 Return your response ONLY as a valid JSON object matching this schema:
 {
   "recommendations": [
@@ -2783,9 +2784,9 @@ app.post('/api/explain', async (req, res) => {
 }`;
 
   const systemPrompt = hintOnly
-    ? `You are a world-class algorithm coach. The user wants a HINT ONLY (not a full solution). Use the learner snapshot to make the personalizedInsight specific. Return ONLY a JSON object matching this exact schema — no markdown, no extra text:
+    ? `You are a world-class algorithm coach. The user wants a HINT ONLY (not a full solution). Use the learner snapshot to make the personalizedInsight specific. Write every response field in English only. Return ONLY a JSON object matching this exact schema — no markdown, no extra text:
 ${hintSchema}`
-    : `You are a world-class algorithm coach. Teach the user HOW TO THINK about this algorithm or problem — not just the answer. Your explanation must build intuition from brute force to optimal solution. Use the learner snapshot: explicitly reference a concrete solved problem, note, topic status, count, or focus goal in personalizedInsight when available. Do not make up learner facts.
+    : `You are a world-class algorithm coach. Teach the user HOW TO THINK about this algorithm or problem — not just the answer. Your explanation must build intuition from brute force to optimal solution. Use the learner snapshot: explicitly reference a concrete solved problem, note, topic status, count, or focus goal in personalizedInsight when available. Do not make up learner facts. Write every response field in English only.
 Return ONLY a valid JSON object matching this exact schema — no markdown, no backticks, no extra text:
 ${fullSchema}`;
 
