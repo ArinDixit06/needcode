@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   RotateCcw,
   ChevronLeft,
@@ -10,10 +10,8 @@ import {
   Brain,
   Layers,
   Search,
-  Filter,
   Clock,
   TrendingUp,
-  Zap,
   Eye,
   EyeOff,
   RefreshCw,
@@ -45,6 +43,7 @@ interface RevisionTabProps {
   solved: SolvedQuestion[];
   patterns: Pattern[];
   onExplainPattern?: (pattern: string) => void;
+  onUpdateSolvedNotes?: (id: string, notes: string) => void;
 }
 
 /* ─── Helpers ─────────────────────────────────────────────────────────────── */
@@ -288,8 +287,29 @@ function PatternFlashcard({
 }
 
 /** Solved question card for revision */
-function SolvedCard({ q, index }: { q: SolvedQuestion; index: number }) {
+function SolvedCard({
+  q,
+  index,
+  onUpdateNotes,
+}: {
+  q: SolvedQuestion;
+  index: number;
+  onUpdateNotes?: (id: string, notes: string) => void;
+}) {
   const [showNotes, setShowNotes] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [notesText, setNotesText] = useState(q.notes || '');
+
+  useEffect(() => {
+    setNotesText(q.notes || '');
+  }, [q.notes]);
+
+  const handleSave = () => {
+    if (onUpdateNotes) {
+      onUpdateNotes(q.questionId, notesText);
+    }
+    setIsEditing(false);
+  };
 
   return (
     <div
@@ -404,21 +424,35 @@ function SolvedCard({ q, index }: { q: SolvedQuestion; index: number }) {
             <Clock size={10} /> {timeAgo(q.solvedAt)}
           </span>
 
-          {q.notes && (
+          <button
+            className="button button-ghost"
+            style={{ padding: '3px 7px', fontSize: '0.68rem' }}
+            onClick={() => {
+              setShowNotes((s) => !s);
+              if (isEditing) setIsEditing(false);
+            }}
+          >
+            {showNotes ? <EyeOff size={11} /> : <Eye size={11} />}
+            {showNotes ? ' Hide' : ' Notes'}
+          </button>
+
+          {onUpdateNotes && (
             <button
               className="button button-ghost"
-              style={{ padding: '3px 7px', fontSize: '0.68rem' }}
-              onClick={() => setShowNotes((s) => !s)}
+              style={{ padding: '3px 7px', fontSize: '0.68rem', color: 'var(--accent-primary)', border: '1px solid var(--border-color)' }}
+              onClick={() => {
+                setShowNotes(true);
+                setIsEditing((e) => !e);
+              }}
             >
-              {showNotes ? <EyeOff size={11} /> : <Eye size={11} />}
-              {showNotes ? ' Hide' : ' Notes'}
+              Edit
             </button>
           )}
         </div>
       </div>
 
       {/* Notes section */}
-      {showNotes && q.notes && (
+      {showNotes && (
         <div
           style={{
             padding: '10px 16px',
@@ -427,11 +461,54 @@ function SolvedCard({ q, index }: { q: SolvedQuestion; index: number }) {
             lineHeight: 1.65,
             background: 'var(--bg-callout)',
             borderLeft: '3px solid var(--accent-primary)',
-            whiteSpace: 'pre-wrap',
             animation: 'fadeIn 0.15s ease',
           }}
         >
-          {q.notes}
+          {isEditing ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <textarea
+                value={notesText}
+                onChange={(e) => setNotesText(e.target.value)}
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-color)',
+                  background: 'var(--bg-app)',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.8rem',
+                  fontFamily: 'inherit',
+                  resize: 'vertical',
+                  outline: 'none',
+                }}
+                placeholder="Write solving notes, intuition, complexity takeaways..."
+              />
+              <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                <button
+                  className="button button-secondary"
+                  style={{ padding: '3px 8px', fontSize: '0.72rem' }}
+                  onClick={() => {
+                    setIsEditing(false);
+                    setNotesText(q.notes || '');
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="button button-primary"
+                  style={{ padding: '3px 8px', fontSize: '0.72rem' }}
+                  onClick={handleSave}
+                >
+                  Save Notes
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ whiteSpace: 'pre-wrap' }}>
+              {q.notes || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No notes recorded. Click Edit to add some!</span>}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -611,7 +688,7 @@ function PatternQuiz({
 }
 
 /* ─── Main Component ──────────────────────────────────────────────────────── */
-const RevisionTab: React.FC<RevisionTabProps> = ({ solved, patterns, onExplainPattern }) => {
+const RevisionTab: React.FC<RevisionTabProps> = ({ solved, patterns, onExplainPattern, onUpdateSolvedNotes }) => {
   const [activeSection, setActiveSection] = useState<'overview' | 'problems' | 'patterns' | 'quiz'>(
     'overview',
   );
@@ -941,7 +1018,7 @@ const RevisionTab: React.FC<RevisionTabProps> = ({ solved, patterns, onExplainPa
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {filteredSolved.map((q, i) => (
-                <SolvedCard key={q.questionId} q={q} index={i} />
+                <SolvedCard key={q.questionId} q={q} index={i} onUpdateNotes={onUpdateSolvedNotes} />
               ))}
             </div>
           )}

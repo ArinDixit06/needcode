@@ -1281,6 +1281,37 @@ function App() {
     }
   };
 
+  // Edit Solved Question Notes
+  const handleUpdateSolvedNotes = async (questionId: string, newNotes: string) => {
+    const solvedItem = solved.find(s => s.questionId === questionId);
+    if (!solvedItem) return;
+
+    try {
+      const res = await apiFetch('/api/solved', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId,
+          title: solvedItem.title,
+          difficulty: solvedItem.difficulty,
+          category: solvedItem.category,
+          url: solvedItem.url,
+          notes: newNotes,
+          solvedAt: solvedItem.solvedAt
+        })
+      });
+
+      if (res.ok) {
+        showToast('Solved notes saved successfully!', 'success');
+        fetchData(); // Refresh the solved list and overview metrics
+      } else {
+        showToast('Failed to save solved notes', 'error');
+      }
+    } catch (err) {
+      showToast('Failed to save notes due to network error', 'error');
+    }
+  };
+
   // Copy code utility
   const handleCopyCodeText = (codeText: string) => {
     navigator.clipboard.writeText(codeText);
@@ -3024,6 +3055,7 @@ function App() {
                       solved={solved}
                       patterns={patternsList}
                       onExplainPattern={handleExplainPattern}
+                      onUpdateSolvedNotes={handleUpdateSolvedNotes}
                     />
                   )}
                 </>
