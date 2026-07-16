@@ -1887,6 +1887,69 @@ const initDb = async () => {
         ]
       );
     }
+
+    // Create Company Questions Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS company_questions (
+        id VARCHAR(100) NOT NULL,
+        company VARCHAR(100) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        acceptance VARCHAR(50) NOT NULL,
+        difficulty VARCHAR(50) NOT NULL,
+        frequency FLOAT NOT NULL,
+        url TEXT NOT NULL,
+        PRIMARY KEY (id, company)
+      );
+    `);
+    await client.query('CREATE INDEX IF NOT EXISTS idx_company_questions_company ON company_questions(company);');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_company_questions_difficulty ON company_questions(difficulty);');
+
+    // Seed Company Questions if empty
+    const checkCompanyQuestions = await client.query('SELECT COUNT(*) FROM company_questions');
+    const cqCount = parseInt(checkCompanyQuestions.rows[0].count, 10);
+    if (cqCount === 0) {
+      console.log('Seeding PostgreSQL database with company-wise questions...');
+      const companyData = readJsonFile(COMPANY_QUESTIONS_FILE, {});
+      const allRows = [];
+      
+      for (const [company, list] of Object.entries(companyData)) {
+        for (const q of list) {
+          allRows.push({
+            id: q.id,
+            company,
+            title: q.title,
+            acceptance: q.acceptance,
+            difficulty: q.difficulty,
+            frequency: q.frequency,
+            url: q.url
+          });
+        }
+      }
+
+      // Chunk size of 200 to prevent parameter limit errors
+      const chunkSize = 200;
+      for (let i = 0; i < allRows.length; i += chunkSize) {
+        const chunk = allRows.slice(i, i + chunkSize);
+        let valueStrings = [];
+        let valueParams = [];
+        let counter = 1;
+
+        for (const row of chunk) {
+          valueStrings.push(`($${counter}, $${counter+1}, $${counter+2}, $${counter+3}, $${counter+4}, $${counter+5}, $${counter+6})`);
+          valueParams.push(row.id, row.company, row.title, row.acceptance, row.difficulty, row.frequency, row.url);
+          counter += 7;
+        }
+
+        const query = `
+          INSERT INTO company_questions (id, company, title, acceptance, difficulty, frequency, url)
+          VALUES ${valueStrings.join(', ')}
+          ON CONFLICT DO NOTHING
+        `;
+        await client.query(query, valueParams);
+      }
+      console.log('Company-wise questions seeding complete.');
+    }
+    
     
     console.log('Database seeding & schema updates complete.');
     client.release();
@@ -2043,7 +2106,7 @@ app.get('/api/questions/stats', async (req, res) => {
 });
 
 // GET company-wise interview questions (paginated and filtered)
-app.get('/api/company-questions', (req, res) => {
+app.get('/api/company-questions', async (req, res) => {
   const company = req.query.company || 'Google';
   const search = req.query.search || '';
   const difficulty = req.query.difficulty || 'All';
@@ -2051,6 +2114,48 @@ app.get('/api/company-questions', (req, res) => {
   const limit = parseInt(req.query.limit) || 15;
 
   try {
+    if (pool) {
+      let queryStr = 'SELECT id, company, title, acceptance, difficulty, frequency, url FROM company_questions WHERE company = $1';
+      const queryParams = [company];
+      let paramCount = 2;
+
+      if (search) {
+        queryStr += ` AND (title ILIKE $${paramCount} OR id ILIKE $${paramCount})`;
+        queryParams.push(`%${search}%`);
+        paramCount++;
+      }
+
+      if (difficulty !== 'All') {
+        queryStr += ` AND difficulty = $${paramCount}`;
+        queryParams.push(difficulty);
+        paramCount++;
+      }
+
+      // Get count
+      const countQuery = `SELECT COUNT(*) FROM (${queryStr}) as temp`;
+      const countResult = await pool.query(countQuery, queryParams);
+      const totalCount = parseInt(countResult.rows[0].count, 10);
+
+      // Get paginated questions sorted by frequency DESC
+      queryStr += ` ORDER BY frequency DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+      queryParams.push(limit);
+      queryParams.push((page - 1) * limit);
+
+      const qResult = await pool.query(queryStr, queryParams);
+      const questions = qResult.rows;
+
+      // Get distinct companies list
+      const compResult = await pool.query('SELECT DISTINCT company FROM company_questions ORDER BY company ASC');
+      const companies = compResult.rows.map(r => r.company);
+
+      return res.json({
+        companies: companies.length > 0 ? companies : ['Google', 'Meta', 'Amazon', 'Microsoft', 'Apple', 'Uber', 'Bloomberg', 'Netflix'],
+        questions,
+        totalCount
+      });
+    }
+
+    // JSON Fallback Mode
     const data = readJsonFile(COMPANY_QUESTIONS_FILE, {});
     const companyList = Object.keys(data);
     
