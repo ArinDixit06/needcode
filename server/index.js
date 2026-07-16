@@ -1718,7 +1718,8 @@ const initDb = async () => {
     await client.query('ALTER TABLE solved_questions ADD COLUMN IF NOT EXISTS repetition INT DEFAULT 0;');
     await client.query('ALTER TABLE solved_questions ADD COLUMN IF NOT EXISTS review_interval INT DEFAULT 1;');
     await client.query('ALTER TABLE solved_questions ADD COLUMN IF NOT EXISTS easiness DOUBLE PRECISION DEFAULT 2.5;');
-    await client.query('ALTER TABLE solved_questions ADD COLUMN IF NOT EXISTS next_review_at TIMESTAMP DEFAULT NOW();');
+    await client.query('ALTER TABLE solved_questions ADD COLUMN IF NOT EXISTS next_review_at TIMESTAMP DEFAULT NOW() + INTERVAL \'1 day\';');
+    await client.query('ALTER TABLE solved_questions ALTER COLUMN next_review_at SET DEFAULT NOW() + INTERVAL \'1 day\';');
 
     // Create DSA Progress Tracker Table
     await client.query(`
@@ -1805,8 +1806,12 @@ const initDb = async () => {
 
     // Migrate existing dsa_exercise_submissions to support language compounds
     await client.query('ALTER TABLE dsa_exercise_submissions ADD COLUMN IF NOT EXISTS language VARCHAR(50) DEFAULT \'javascript\';');
-    await client.query('ALTER TABLE dsa_exercise_submissions DROP CONSTRAINT IF EXISTS dsa_exercise_submissions_pkey;');
-    await client.query('ALTER TABLE dsa_exercise_submissions ADD PRIMARY KEY (exercise_id, language);');
+    try {
+      await client.query('ALTER TABLE dsa_exercise_submissions DROP CONSTRAINT IF EXISTS dsa_exercise_submissions_pkey;');
+      await client.query('ALTER TABLE dsa_exercise_submissions ADD PRIMARY KEY (exercise_id, language);');
+    } catch (pkErr) {
+      console.log('Skipped dsa_exercise_submissions primary key migration (already set):', pkErr.message);
+    }
 
     // Create DSA Patterns Table
     await client.query(`
@@ -2372,6 +2377,10 @@ app.post('/api/solved', async (req, res) => {
     const existingSolvedIdx = solvedList.findIndex(s => s.questionId === questionId);
     const existingItem = existingSolvedIdx >= 0 ? solvedList[existingSolvedIdx] : {};
     
+    // Calculate default next review for new solved items (1 day from now)
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     const solvedItem = {
       questionId,
       title: title || existingItem.title || (question ? question.title : 'Unknown Question'),
@@ -2385,7 +2394,7 @@ app.post('/api/solved', async (req, res) => {
       repetition: repetition !== undefined ? parseInt(repetition) : (existingItem.repetition || 0),
       reviewInterval: reviewInterval !== undefined ? parseInt(reviewInterval) : (existingItem.reviewInterval || 1),
       easiness: easiness !== undefined ? parseFloat(easiness) : (existingItem.easiness || 2.5),
-      nextReviewAt: nextReviewAt !== undefined ? nextReviewAt : (existingItem.nextReviewAt || new Date().toISOString())
+      nextReviewAt: nextReviewAt !== undefined ? nextReviewAt : (existingItem.nextReviewAt || tomorrow.toISOString())
     };
 
     if (existingSolvedIdx >= 0) {
