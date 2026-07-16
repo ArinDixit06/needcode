@@ -125,6 +125,67 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+.auth-gate {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 20%, var(--accent-primary-glow), transparent 32%),
+    var(--bg-app);
+}
+
+.auth-card {
+  width: min(100%, 360px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.auth-mark {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 4px;
+  color: var(--accent-primary);
+  background: var(--accent-primary-glow);
+  border-radius: var(--radius-md);
+}
+
+.auth-card h1 {
+  font-size: 1.15rem;
+  color: var(--text-primary);
+}
+
+.auth-card > p {
+  margin-bottom: 4px;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+}
+
+.auth-card label {
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.auth-card .button {
+  width: 100%;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.auth-error {
+  color: var(--tag-hard-text) !important;
+  font-size: 0.78rem !important;
+}
+
 /* Layout System */
 .notion-app-layout {
   display: flex;

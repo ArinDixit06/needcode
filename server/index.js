@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import pg from 'pg';
+import crypto from 'crypto';
 
 dotenv.config({ path: './src/.env' });
 
@@ -16,6 +17,55 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+
+const WEBSITE_PASSWORD = process.env.WEBSITE_PASSWORD;
+const SESSION_DURATION_MS = 12 * 60 * 60 * 1000;
+const signSession = (expiresAt) =>
+  crypto.createHmac('sha256', WEBSITE_PASSWORD).update(String(expiresAt)).digest('hex');
+const isValidSession = (token = '') => {
+  if (!WEBSITE_PASSWORD) return true;
+  const [expiresAt, signature] = token.split('.');
+  if (!expiresAt || !signature || Number(expiresAt) <= Date.now()) return false;
+  const expectedSignature = signSession(expiresAt);
+  return signature.length === expectedSignature.length &&
+    crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+};
+
+app.get('/api/auth/status', (req, res) => {
+  const token = req.headers.authorization?.replace(/^Bearer\s+/i, '') || '';
+  res.json({
+    passwordRequired: Boolean(WEBSITE_PASSWORD),
+    authenticated: isValidSession(token)
+  });
+});
+
+app.post('/api/auth/login', (req, res) => {
+  if (!WEBSITE_PASSWORD) {
+    return res.status(503).json({ error: 'Website password is not configured on the server.' });
+  }
+
+  const password = String(req.body?.password || '');
+  const expected = Buffer.from(WEBSITE_PASSWORD);
+  const received = Buffer.from(password);
+  const passwordsMatch = expected.length === received.length && crypto.timingSafeEqual(expected, received);
+  if (!passwordsMatch) {
+    return res.status(401).json({ error: 'Incorrect password.' });
+  }
+
+  const expiresAt = Date.now() + SESSION_DURATION_MS;
+  res.json({ token: `${expiresAt}.${signSession(expiresAt)}`, expiresAt });
+});
+
+app.use('/api', (req, res, next) => {
+  if (!WEBSITE_PASSWORD || req.path.startsWith('/auth/')) {
+    return next();
+  }
+  const token = req.headers.authorization?.replace(/^Bearer\s+/i, '') || '';
+  if (!isValidSession(token)) {
+    return res.status(401).json({ error: 'Password required or session expired.' });
+  }
+  next();
+});
 
 const QUESTIONS_FILE = path.join(__dirname, 'data', 'questions.json');
 const SOLVED_FILE = path.join(__dirname, 'data', 'solved.json');

@@ -98,8 +98,14 @@ function LoadingDots({ label }: { label: string }) {
 }
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
-const apiFetch = (path: string, init?: RequestInit) =>
-  fetch(apiBaseUrl ? `${apiBaseUrl}${path}` : path, init);
+const apiFetch = (path: string, init?: RequestInit) => {
+  const headers = new Headers(init?.headers);
+  const sessionToken = sessionStorage.getItem('needcode_session_token');
+  if (sessionToken) {
+    headers.set('Authorization', `Bearer ${sessionToken}`);
+  }
+  return fetch(apiBaseUrl ? `${apiBaseUrl}${path}` : path, { ...init, headers });
+};
 
 class ListNode {
   val: any;
@@ -402,6 +408,11 @@ function App() {
     return (localStorage.getItem('needcode_active_tab') as any) || 'recs';
   });
   const [loading, setLoading] = useState(true);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
   const [recsLoading, setRecsLoading] = useState(false);
   const [isMock, setIsMock] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
@@ -475,6 +486,22 @@ function App() {
 
   // Fetch initial data
   useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const response = await apiFetch('/api/auth/status');
+        const status = await response.json();
+        setIsAuthenticated(status.authenticated === true);
+      } catch {
+        setPasswordError('Unable to reach the server. Please try again.');
+      } finally {
+        setAuthChecking(false);
+      }
+    };
+    checkSession();
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
     const init = async () => {
       await fetchData();
       const config = await fetchConfig();
@@ -487,7 +514,7 @@ function App() {
       }
     };
     init();
-  }, []);
+  }, [isAuthenticated]);
 
   // Reset pagination on search or filter change
   useEffect(() => {
@@ -759,15 +786,17 @@ function App() {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     if (activeTab === 'practice') {
       fetchExercises();
     } else if (activeTab === 'patterns') {
       fetchPatterns();
     }
-  }, [activeTab]);
+  }, [activeTab, isAuthenticated]);
 
   // Debounced pattern search
   useEffect(() => {
+    if (!isAuthenticated) return;
     if (!patternSearch.trim()) {
       setPatternSearchResults(null);
       return;
@@ -785,12 +814,13 @@ function App() {
       }
     }, 280);
     return () => clearTimeout(timer);
-  }, [patternSearch]);
+  }, [patternSearch, isAuthenticated]);
 
   // Re-fetch catalog when pagination or filters change
   useEffect(() => {
+    if (!isAuthenticated) return;
     fetchCatalog();
-  }, [currentPage, pageSize, searchQuery, filterCategory, filterDifficulty]);
+  }, [currentPage, pageSize, searchQuery, filterCategory, filterDifficulty, isAuthenticated]);
 
   const fetchData = async () => {
     try {
@@ -854,6 +884,30 @@ function App() {
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'info') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  const handlePasswordSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setPasswordError('');
+    setPasswordSubmitting(true);
+    try {
+      const response = await fetch(apiBaseUrl ? `${apiBaseUrl}/api/auth/login` : '/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      const data = await response.json();
+      if (!response.ok || !data.token) {
+        throw new Error(data.error || 'Unable to unlock the workspace.');
+      }
+      sessionStorage.setItem('needcode_session_token', data.token);
+      setPassword('');
+      setIsAuthenticated(true);
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : 'Unable to unlock the workspace.');
+    } finally {
+      setPasswordSubmitting(false);
+    }
   };
 
   // Handle saving API key to local storage
@@ -1281,6 +1335,38 @@ function App() {
     const parts = text.split(/\*\*([^*]+)\*\*/g);
     return parts.map((part, i) => i % 2 === 1 ? <strong key={i} style={{ color: '#fff', fontWeight: 700 }}>{part}</strong> : part);
   };
+
+  if (authChecking) {
+    return <div className="auth-gate"><LoadingDots label="Checking secure session" /></div>;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <main className="auth-gate">
+        <form className="auth-card" onSubmit={handlePasswordSubmit}>
+          <div className="auth-mark"><Sparkles size={22} /></div>
+          <h1>NeedCode Workspace</h1>
+          <p>Enter the workspace password to continue.</p>
+          <label htmlFor="workspace-password">Password</label>
+          <input
+            id="workspace-password"
+            type="password"
+            className="input-field"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="current-password"
+            autoFocus
+            required
+          />
+          {passwordError && <p className="auth-error" role="alert">{passwordError}</p>}
+          <button className="button button-primary" type="submit" disabled={passwordSubmitting}>
+            {passwordSubmitting ? <Loader2 className="animate-spin" size={15} /> : <Sparkles size={15} />}
+            {passwordSubmitting ? 'Unlocking...' : 'Unlock workspace'}
+          </button>
+        </form>
+      </main>
+    );
+  }
 
   return (
     <div className="notion-app-layout">
