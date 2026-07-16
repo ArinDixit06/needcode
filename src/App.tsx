@@ -2917,6 +2917,7 @@ function App() {
                       onDeleteSolved={handleDeleteSolved}
                       onStartPractice={startPractice}
                       onExplainPattern={handleExplainPattern}
+                      onGuideProgressError={(message) => showToast(message, 'error')}
                     />
                   )}
                 </>

@@ -9,6 +9,22 @@ import {
 import { dsaGuideSections } from './dsaGuideData';
 import type { GuideSection, GuideProblem } from './dsaGuideData';
 
+const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+const guideApiUrl = (path: string) => apiBaseUrl ? `${apiBaseUrl}${path}` : path;
+
+const getCompletedTasks = (progress: unknown): Record<string, boolean> => {
+  if (!progress || typeof progress !== 'object') {
+    return {};
+  }
+
+  return Object.entries(progress).reduce<Record<string, boolean>>((completedTasks, [key, completed]) => {
+    if (completed === true) {
+      completedTasks[key] = true;
+    }
+    return completedTasks;
+  }, {});
+};
+
 // Map topics to milestones with premium emoji representation
 const MILESTONES = [
   {
@@ -104,6 +120,7 @@ interface DsaGuideTabProps {
   onDeleteSolved: (qId: string) => void;
   onStartPractice: (exerciseId: string) => void;
   onExplainPattern: (pattern: string) => void;
+  onGuideProgressError: (message: string) => void;
 }
 
 export default function DsaGuideTab({
@@ -112,13 +129,14 @@ export default function DsaGuideTab({
   onMarkSolved,
   onDeleteSolved,
   onStartPractice,
-  onExplainPattern
+  onExplainPattern,
+  onGuideProgressError
 }: DsaGuideTabProps) {
   const [selectedSectionId, setSelectedSectionId] = useState<string>('arrays');
   const [guideCheckedTasks, setGuideCheckedTasks] = useState<Record<string, boolean>>(() => {
     try {
       const saved = localStorage.getItem('needcode_guide_checked_tasks');
-      return saved ? JSON.parse(saved) : {};
+      return getCompletedTasks(saved ? JSON.parse(saved) : {});
     } catch (e) {
       return {};
     }
@@ -139,15 +157,78 @@ export default function DsaGuideTab({
   };
 
   useEffect(() => {
-    localStorage.setItem('needcode_guide_checked_tasks', JSON.stringify(guideCheckedTasks));
+    const completedTasks = getCompletedTasks(guideCheckedTasks);
+    localStorage.setItem('needcode_guide_checked_tasks', JSON.stringify(completedTasks));
   }, [guideCheckedTasks]);
 
-  const toggleTask = (sectionId: string, taskIndex: number) => {
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadGuideProgress = async () => {
+      try {
+        const response = await fetch(guideApiUrl('/api/guide-progress'));
+        if (!response.ok) {
+          throw new Error('The guide progress service returned an error.');
+        }
+
+        const completedServerTasks = getCompletedTasks(await response.json());
+        const localCompletedTasks = getCompletedTasks(guideCheckedTasks);
+        const mergedProgress = { ...completedServerTasks, ...localCompletedTasks };
+
+        if (!cancelled) {
+          setGuideCheckedTasks(mergedProgress);
+        }
+
+        const legacyTaskKeys = Object.keys(localCompletedTasks)
+          .filter(taskKey => !completedServerTasks[taskKey]);
+        await Promise.all(legacyTaskKeys.map(async taskKey => {
+          const saveResponse = await fetch(guideApiUrl(`/api/guide-progress/${encodeURIComponent(taskKey)}`), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ completed: true })
+          });
+          if (!saveResponse.ok) {
+            throw new Error('Could not migrate saved guide progress.');
+          }
+        }));
+      } catch (err) {
+        if (!cancelled) {
+          onGuideProgressError('Could not sync roadmap progress. Your browser copy is still available.');
+        }
+      }
+    };
+
+    loadGuideProgress();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const toggleTask = async (sectionId: string, taskIndex: number) => {
     const key = `${sectionId}-${taskIndex}`;
+    const previousCompleted = !!guideCheckedTasks[key];
+    const completed = !previousCompleted;
     setGuideCheckedTasks(prev => ({
       ...prev,
-      [key]: !prev[key]
+      [key]: completed
     }));
+
+    try {
+      const response = await fetch(guideApiUrl(`/api/guide-progress/${encodeURIComponent(key)}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed })
+      });
+      if (!response.ok) {
+        throw new Error('The guide progress service returned an error.');
+      }
+    } catch (err) {
+      setGuideCheckedTasks(prev => ({
+        ...prev,
+        [key]: previousCompleted
+      }));
+      onGuideProgressError('Could not save roadmap progress. Please try again.');
+    }
   };
 
   const toggleNotes = (title: string) => {

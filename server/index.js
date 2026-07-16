@@ -20,6 +20,7 @@ app.use(express.json());
 const QUESTIONS_FILE = path.join(__dirname, 'data', 'questions.json');
 const SOLVED_FILE = path.join(__dirname, 'data', 'solved.json');
 const DSA_STRUCTURES_FILE = path.join(__dirname, 'data', 'dsa_structures.json');
+const GUIDE_PROGRESS_FILE = path.join(__dirname, 'data', 'guide_progress.json');
 const RECOMMENDATIONS_FILE = path.join(__dirname, 'data', 'recommendations.json');
 const PROFILE_FILE = path.join(__dirname, 'data', 'leetcode_profile.json');
 const DSA_EXERCISES_FILE = path.join(__dirname, 'data', 'dsa_exercises.json');
@@ -1189,6 +1190,48 @@ const getDsaStructures = async () => {
   return readJsonFile(DSA_STRUCTURES_FILE, DEFAULT_DSA_STRUCTURES);
 };
 
+const getGuideProgress = async () => {
+  if (pool) {
+    try {
+      const result = await pool.query('SELECT task_key as "taskKey" FROM guide_task_progress WHERE completed = TRUE');
+      return Object.fromEntries(result.rows.map(row => [row.taskKey, true]));
+    } catch (err) {
+      console.error('PostgreSQL getGuideProgress error, disabling DB mode and falling back to JSON:', err.message);
+      pool = null;
+    }
+  }
+  return readJsonFile(GUIDE_PROGRESS_FILE, {});
+};
+
+const setGuideTaskProgress = async (taskKey, completed) => {
+  if (pool) {
+    try {
+      if (completed) {
+        await pool.query(
+          `INSERT INTO guide_task_progress (task_key, completed, updated_at)
+           VALUES ($1, TRUE, NOW())
+           ON CONFLICT (task_key) DO UPDATE SET completed = TRUE, updated_at = NOW()`,
+          [taskKey]
+        );
+      } else {
+        await pool.query('DELETE FROM guide_task_progress WHERE task_key = $1', [taskKey]);
+      }
+      return;
+    } catch (err) {
+      console.error('PostgreSQL setGuideTaskProgress error, disabling DB mode and falling back to JSON:', err.message);
+      pool = null;
+    }
+  }
+
+  const progress = readJsonFile(GUIDE_PROGRESS_FILE, {});
+  if (completed) {
+    progress[taskKey] = true;
+  } else {
+    delete progress[taskKey];
+  }
+  writeJsonFile(GUIDE_PROGRESS_FILE, progress);
+};
+
 const normalizeForMatch = (value = '') => value.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 const truncateText = (value = '', maxLength = 180) => {
@@ -1570,6 +1613,15 @@ const initDb = async () => {
       );
     `);
 
+    // Create Roadmap Practice Task Progress Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS guide_task_progress (
+        task_key VARCHAR(200) PRIMARY KEY,
+        completed BOOLEAN NOT NULL DEFAULT TRUE,
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+
     // Create AI Recommendations Table
     await client.query(`
       CREATE TABLE IF NOT EXISTS ai_recommendations (
@@ -1918,6 +1970,34 @@ app.get('/api/dsa-structures', async (req, res) => {
     res.json(dsaList);
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve DSA structures checklist' });
+  }
+});
+
+// GET completed roadmap practice tasks
+app.get('/api/guide-progress', async (req, res) => {
+  try {
+    res.json(await getGuideProgress());
+  } catch (err) {
+    console.error('Failed to retrieve guide progress:', err);
+    res.status(500).json({ error: 'Failed to retrieve guide progress' });
+  }
+});
+
+// PUT roadmap practice task completion
+app.put('/api/guide-progress/:taskKey', async (req, res) => {
+  const taskKey = req.params.taskKey;
+  const { completed } = req.body;
+
+  if (!/^[a-z0-9-]+$/i.test(taskKey) || typeof completed !== 'boolean') {
+    return res.status(400).json({ error: 'A valid task key and completed boolean are required' });
+  }
+
+  try {
+    await setGuideTaskProgress(taskKey, completed);
+    res.json({ taskKey, completed });
+  } catch (err) {
+    console.error('Failed to save guide progress:', err);
+    res.status(500).json({ error: 'Failed to save guide progress' });
   }
 });
 
