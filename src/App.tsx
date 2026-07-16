@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import DsaGuideTab from './DsaGuideTab';
 import RevisionTab from './RevisionTab';
+import CompanyQuestionsTab from './CompanyQuestionsTab';
 import { dsaGuideSections } from './dsaGuideData';
 import { 
   CheckCircle2, 
@@ -350,6 +351,7 @@ const getActiveTabName = (tab: string) => {
     case 'practice': return 'DSA Practice';
     case 'patterns': return 'Coding Patterns';
     case 'revision': return 'Revision Hub';
+    case 'companies': return 'Top Companies';
     default: return 'Workspace';
   }
 };
@@ -364,6 +366,7 @@ const getPageEmoji = (tab: string) => {
     case 'practice': return '⚡';
     case 'patterns': return '🧬';
     case 'revision': return '🔁';
+    case 'companies': return '🏢';
     default: return '📂';
   }
 };
@@ -378,6 +381,7 @@ const getPageTitle = (tab: string) => {
     case 'practice': return 'DSA Practice Lab';
     case 'patterns': return 'Common Algorithm Patterns';
     case 'revision': return 'Revision Hub';
+    case 'companies': return 'Top Companies';
     default: return 'NeedCode Workspace';
   }
 };
@@ -392,6 +396,7 @@ const getPageSubtitle = (tab: string) => {
     case 'practice': return 'Solve hands-on exercises in the browser for Arrays, Lists, Trees, Stacks, and more to test your muscle memory.';
     case 'patterns': return 'Explore common design patterns tested in technical interviews, including templates and when to use them.';
     case 'revision': return 'Spaced-repetition review of your solved problems and algorithm patterns. Flashcards, notes, and a pattern quiz to lock in muscle memory.';
+    case 'companies': return 'Practice questions grouped by frequency asked in real technical interviews at Google, Meta, Amazon, Microsoft, and more.';
     default: return '';
   }
 };
@@ -409,7 +414,7 @@ function App() {
   const [metaStats, setMetaStats] = useState({ totalCount: 0, easyCount: 0, mediumCount: 0, hardCount: 0 });
 
   // UI states
-  const [activeTab, setActiveTab] = useState<'recs' | 'catalog' | 'solved' | 'learn' | 'practice' | 'patterns' | 'guide' | 'revision'>(() => {
+  const [activeTab, setActiveTab] = useState<'recs' | 'catalog' | 'solved' | 'learn' | 'practice' | 'patterns' | 'guide' | 'revision' | 'companies'>(() => {
     return (localStorage.getItem('needcode_active_tab') as any) || 'recs';
   });
   const [loading, setLoading] = useState(true);
@@ -1476,6 +1481,13 @@ function App() {
             >
               <span className="sidebar-item-icon">🔁</span>
               <span>Revision Hub</span>
+            </div>
+            <div 
+              className={`sidebar-item ${activeTab === 'companies' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('companies'); setMobileMenuOpen(false); }}
+            >
+              <span className="sidebar-item-icon">🏢</span>
+              <span>Top Companies</span>
             </div>
           </div>
 
@@ -3056,6 +3068,15 @@ function App() {
                       patterns={patternsList}
                       onExplainPattern={handleExplainPattern}
                       onUpdateSolvedNotes={handleUpdateSolvedNotes}
+                    />
+                  )}
+
+                  {activeTab === 'companies' && (
+                    <CompanyQuestionsTab
+                      solved={solved}
+                      onMarkSolved={handleMarkSolvedClick}
+                      apiFetch={apiFetch}
+                      showToast={showToast}
                     />
                   )}
                 </>

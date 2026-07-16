@@ -76,6 +76,7 @@ const PROFILE_FILE = path.join(__dirname, 'data', 'leetcode_profile.json');
 const DSA_EXERCISES_FILE = path.join(__dirname, 'data', 'dsa_exercises.json');
 const DSA_EXERCISE_SUBMISSIONS_FILE = path.join(__dirname, 'data', 'dsa_exercise_submissions.json');
 const DSA_PATTERNS_FILE = path.join(__dirname, 'data', 'dsa_patterns.json');
+const COMPANY_QUESTIONS_FILE = path.join(__dirname, 'data', 'company_questions.json');
 
 const DEFAULT_DSA_PATTERNS = [
   {
@@ -2038,6 +2039,49 @@ app.get('/api/questions/stats', async (req, res) => {
   } catch (err) {
     console.error('Error fetching questions stats:', err);
     res.status(500).json({ error: 'Failed to fetch catalog statistics' });
+  }
+});
+
+// GET company-wise interview questions (paginated and filtered)
+app.get('/api/company-questions', (req, res) => {
+  const company = req.query.company || 'Google';
+  const search = req.query.search || '';
+  const difficulty = req.query.difficulty || 'All';
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 15;
+
+  try {
+    const data = readJsonFile(COMPANY_QUESTIONS_FILE, {});
+    const companyList = Object.keys(data);
+    
+    let questions = data[company] || [];
+
+    if (search) {
+      const s = search.toLowerCase();
+      questions = questions.filter(q => 
+        q.title.toLowerCase().includes(s) || 
+        q.id.toString().includes(s)
+      );
+    }
+
+    if (difficulty !== 'All') {
+      questions = questions.filter(q => q.difficulty === difficulty);
+    }
+
+    // Sort by frequency descending
+    questions.sort((a, b) => b.frequency - a.frequency);
+
+    const totalCount = questions.length;
+    const paginated = questions.slice((page - 1) * limit, page * limit);
+
+    res.json({
+      companies: companyList,
+      questions: paginated,
+      totalCount
+    });
+  } catch (error) {
+    console.error('Failed to read company questions:', error);
+    res.status(500).json({ error: 'Failed to read company questions data' });
   }
 });
 
