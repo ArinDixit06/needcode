@@ -994,6 +994,145 @@ body {
   animation: modalScale 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+/* Loading states */
+.workspace-loading {
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.workspace-loading-mark,
+.ai-thinking-orb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  color: var(--accent-primary);
+  background: var(--accent-primary-glow);
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 35%, transparent);
+  border-radius: 50%;
+}
+
+.workspace-loading-mark {
+  width: 58px;
+  height: 58px;
+  animation: loadingOrbit 1.8s ease-in-out infinite;
+}
+
+.workspace-loading-mark::before,
+.ai-thinking-orb::before {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 30%, transparent);
+  border-radius: inherit;
+  animation: loadingRipple 1.8s ease-out infinite;
+}
+
+.workspace-loading h2 {
+  margin-bottom: 5px;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.loading-dots {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.loading-dots-label {
+  margin-right: 3px;
+}
+
+.loading-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  animation: loadingDot 1s ease-in-out infinite;
+}
+
+.loading-dot:nth-of-type(2) {
+  animation-delay: 0.14s;
+}
+
+.loading-dot:nth-of-type(3) {
+  animation-delay: 0.28s;
+}
+
+.workspace-loading-skeletons {
+  display: grid;
+  gap: 7px;
+  width: min(260px, 82vw);
+  margin-top: 4px;
+}
+
+.workspace-loading-skeletons span {
+  height: 7px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--bg-hover) 20%, var(--bg-active) 50%, var(--bg-hover) 80%);
+  background-size: 200% 100%;
+  animation: loadingShimmer 1.4s linear infinite;
+}
+
+.workspace-loading-skeletons span:nth-child(2) {
+  width: 78%;
+  justify-self: center;
+}
+
+.workspace-loading-skeletons span:nth-child(3) {
+  width: 58%;
+  justify-self: center;
+}
+
+.ai-thinking-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+  gap: 12px;
+  padding: 28px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--bg-card), var(--bg-sidebar));
+  animation: fadeIn 0.2s ease-out;
+}
+
+.ai-thinking-orb {
+  width: 40px;
+  height: 40px;
+  animation: loadingOrbit 1.8s ease-in-out infinite;
+}
+
+@keyframes loadingOrbit {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 var(--accent-primary-glow); }
+  50% { transform: scale(1.07); box-shadow: 0 0 0 9px transparent; }
+}
+
+@keyframes loadingRipple {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  75%, 100% { transform: scale(1.22); opacity: 0; }
+}
+
+@keyframes loadingDot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+@keyframes loadingShimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
@@ -1003,6 +1142,17 @@ body {
 @keyframes modalScale {
   from { opacity: 0; transform: scale(0.97); }
   to { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-loading-mark,
+  .ai-thinking-orb,
+  .workspace-loading-mark::before,
+  .ai-thinking-orb::before,
+  .loading-dot,
+  .workspace-loading-skeletons span {
+    animation: none;
+  }
 }
 
 /* Scrollbars styling */

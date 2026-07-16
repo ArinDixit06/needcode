@@ -86,6 +86,17 @@ interface LearnMessage {
   content: string;
 }
 
+function LoadingDots({ label }: { label: string }) {
+  return (
+    <div className="loading-dots" role="status" aria-live="polite">
+      <span className="loading-dots-label">{label}</span>
+      <span className="loading-dot" />
+      <span className="loading-dot" />
+      <span className="loading-dot" />
+    </div>
+  );
+}
+
 class ListNode {
   val: any;
   next: ListNode | null;
@@ -1601,9 +1612,19 @@ function App() {
             {/* Page Content Slot */}
             <div className="notion-page-content">
               {loading ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '60px 0' }}>
-                  <Loader2 className="animate-spin" style={{ color: 'var(--accent-primary)' }} size={32} />
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Loading workspace components...</p>
+                <div className="workspace-loading" role="status" aria-live="polite">
+                  <div className="workspace-loading-mark" aria-hidden="true">
+                    <Sparkles size={24} />
+                  </div>
+                  <div>
+                    <h2>Preparing your workspace</h2>
+                    <LoadingDots label="Loading your learning data" />
+                  </div>
+                  <div className="workspace-loading-skeletons" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
                 </div>
               ) : (
                 <>
@@ -2027,11 +2048,11 @@ function App() {
 
                         {/* Output */}
                         {(explainLoading || hintLoading) && (
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '8px', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
-                            <Loader2 className="animate-spin" style={{ color: 'var(--accent-primary)' }} size={24} />
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                              {hintLoading ? 'Generating pattern hint...' : 'AI Companion is formulating explanation...'}
-                            </p>
+                          <div className="ai-thinking-card">
+                            <div className="ai-thinking-orb" aria-hidden="true">
+                              <Sparkles size={18} />
+                            </div>
+                            <LoadingDots label={hintLoading ? 'Finding the right pattern' : 'Connecting this to your learning history'} />
                           </div>
                         )}
 
