@@ -2638,7 +2638,7 @@ app.post('/api/explain', async (req, res) => {
         'Forgetting to update the character map when shrinking',
         'Edge case: empty string → return 0'
       ],
-      codeImplementation: `#include <algorithm>\n#include <string>\n#include <unordered_map>\n\nint lengthOfLongestSubstring(const std::string& s) {\n  std::unordered_map<char, int> lastSeen;\n  int start = 0;\n  int maxLength = 0;\n\n  for (int end = 0; end < static_cast<int>(s.size()); ++end) {\n    if (lastSeen.count(s[end])) {\n      start = std::max(start, lastSeen[s[end]] + 1);\n    }\n    lastSeen[s[end]] = end;\n    maxLength = std::max(maxLength, end - start + 1);\n  }\n\n  return maxLength;\n}`,
+      codeImplementation: `#include <string>\n#include <unordered_map>\n\nint lengthOfLongestSubstring(const std::string& s) {\n  std::unordered_map<char, int> lastSeen;\n  int start = 0;\n  int maxLength = 0;\n\n  for (int end = 0; end < static_cast<int>(s.size()); ++end) {\n    if (lastSeen.count(s[end])) {\n      const int nextStart = lastSeen[s[end]] + 1;\n      if (nextStart > start) {\n        start = nextStart;\n      }\n    }\n    lastSeen[s[end]] = end;\n\n    const int windowLength = end - start + 1;\n    if (windowLength > maxLength) {\n      maxLength = windowLength;\n    }\n  }\n\n  return maxLength;\n}`,
       followUpVariations: [
         'What if the string contains only lowercase letters? (Optimize space to O(26))',
         'What if you can allow at most K distinct characters?',
@@ -2673,7 +2673,7 @@ app.post('/api/explain', async (req, res) => {
   "dryRunTrace": "Step-by-step trace of the algorithm on a small example input (3–6 steps). Show variable states at each step.",
   "complexity": "Time Complexity: O(...) | Space Complexity: O(...)",
   "pitfalls": ["common pitfall 1", "common pitfall 2", "edge case 3"],
-  "codeImplementation": "Clean, compilable C++17 code. Include required headers, std:: qualifiers, and concise comments on key lines.",
+  "codeImplementation": "Clean, compilable C++17 code. Write core algorithm logic manually: do not include <algorithm> or use std::sort, std::max, std::min, std::reverse, or similar algorithm helpers. Include only necessary headers, std:: qualifiers, and concise comments on key lines.",
   "followUpVariations": ["Follow-up question 1 simulating an interviewer constraint", "Follow-up 2", "Follow-up 3"],
   "transferability": ["Other problem or pattern where this strategy directly applies 1", "2", "3"],
   "personalizedInsight": "One or two sentences referencing a specific item from the learner snapshot. Do not invent history.",
