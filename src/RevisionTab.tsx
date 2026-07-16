@@ -953,6 +953,9 @@ const RevisionTab: React.FC<RevisionTabProps> = ({ solved, patterns, onExplainPa
 
     // Due counts
     const due = solved.filter((s) => {
+      const solvedTime = new Date(s.solvedAt).getTime();
+      const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+      if (solvedTime > oneDayAgo) return false;
       if (!s.nextReviewAt) return true;
       return new Date(s.nextReviewAt).getTime() <= Date.now();
     }).length;
@@ -975,7 +978,9 @@ const RevisionTab: React.FC<RevisionTabProps> = ({ solved, patterns, onExplainPa
         const matchC = filterCat === 'All' || s.category === filterCat;
         
         // Due state filters
-        const isDue = !s.nextReviewAt || new Date(s.nextReviewAt).getTime() <= Date.now();
+        const solvedTime = new Date(s.solvedAt).getTime();
+        const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+        const isDue = solvedTime <= oneDayAgo && (!s.nextReviewAt || new Date(s.nextReviewAt).getTime() <= Date.now());
         const matchStatus = 
           filterStatus === 'All' || 
           (filterStatus === 'Due' && isDue) || 
@@ -985,8 +990,11 @@ const RevisionTab: React.FC<RevisionTabProps> = ({ solved, patterns, onExplainPa
       })
       .sort((a, b) => {
         // Sort: overdue/due first, then by nextReviewAt asc, then by solvedAt desc
-        const aDue = !a.nextReviewAt || new Date(a.nextReviewAt).getTime() <= Date.now();
-        const bDue = !b.nextReviewAt || new Date(b.nextReviewAt).getTime() <= Date.now();
+        const aSolvedTime = new Date(a.solvedAt).getTime();
+        const bSolvedTime = new Date(b.solvedAt).getTime();
+        const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+        const aDue = aSolvedTime <= oneDayAgo && (!a.nextReviewAt || new Date(a.nextReviewAt).getTime() <= Date.now());
+        const bDue = bSolvedTime <= oneDayAgo && (!b.nextReviewAt || new Date(b.nextReviewAt).getTime() <= Date.now());
         if (aDue && !bDue) return -1;
         if (!aDue && bDue) return 1;
 

@@ -1,0 +1,86 @@
+[
+  {
+    "id": "arrays",
+    "name": "Arrays & Hashing",
+    "status": "Not Started",
+    "notes": ""
+  },
+  {
+    "id": "two-pointers",
+    "name": "Two Pointers",
+    "status": "Not Started",
+    "notes": ""
+  },
+  {
+    "id": "sliding-window",
+    "name": "Sliding Window",
+    "status": "Not Started",
+    "notes": ""
+  },
+  {
+    "id": "stacks-queues",
+    "name": "Stacks & Queues",
+    "status": "Not Started",
+    "notes": ""
+  },
+  {
+    "id": "linked-lists",
+    "name": "Linked Lists",
+    "status": "Not Started",
+    "notes": ""
+  },
+  {
+    "id": "binary-search",
+    "name": "Binary Search",
+    "status": "Not Started",
+    "notes": ""
+  },
+  {
+    "id": "trees",
+    "name": "Binary Trees & BST",
+    "status": "Not Started",
+    "notes": ""
+  },
+  {
+    "id": "heaps",
+    "name": "Heaps & Priority Queues",
+    "status": "Not Started",
+    "notes": ""
+  },
+  {
+    "id": "backtracking",
+    "name": "Backtracking & Recursion",
+    "status": "Not Started",
+    "notes": ""
+  },
+  {
+    "id": "graphs",
+    "name": "Graphs (BFS/DFS)",
+    "status": "Not Started",
+    "notes": ""
+  },
+  {
+    "id": "advanced-graphs",
+    "name": "Advanced Graphs (Dijkstra/Union-Find)",
+    "status": "Not Started",
+    "notes": ""
+  },
+  {
+    "id": "dynamic-programming",
+    "name": "Dynamic Programming",
+    "status": "Not Started",
+    "notes": ""
+  },
+  {
+    "id": "greedy",
+    "name": "Greedy Algorithms",
+    "status": "Not Started",
+    "notes": ""
+  },
+  {
+    "id": "bit-manipulation",
+    "name": "Bit Manipulation",
+    "status": "Not Started",
+    "notes": ""
+  }
+]

@@ -382,5 +382,21 @@
     "category": "Dynamic Programming",
     "url": "https://leetcode.com/problems/edit-distance/",
     "description": "Find the minimum number of operations required to convert one string to another."
+  },
+  {
+    "id": "next-permutation",
+    "title": "Next Permutation",
+    "difficulty": "Medium",
+    "category": "Imported",
+    "url": "https://leetcode.com/problems/next-permutation/",
+    "description": "Imported from LeetCode activity."
+  },
+  {
+    "id": "insert-interval",
+    "title": "Insert Interval",
+    "difficulty": "Medium",
+    "category": "Imported",
+    "url": "https://leetcode.com/problems/insert-interval/",
+    "description": "Imported from LeetCode activity."
   }
 ]

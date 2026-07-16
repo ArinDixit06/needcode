@@ -1686,6 +1686,26 @@ const initDb = async () => {
     writeJsonFile(DSA_PATTERNS_FILE, DEFAULT_DSA_PATTERNS);
   }
 
+  // Migrate existing local solved questions to have a 1-day default review interval
+  const solvedList = readJsonFile(SOLVED_FILE, []);
+  let jsonMigrated = false;
+  solvedList.forEach(s => {
+    const solvedDate = new Date(s.solvedAt);
+    const nextReviewDate = s.nextReviewAt ? new Date(s.nextReviewAt) : null;
+    if (!nextReviewDate || nextReviewDate.getTime() <= solvedDate.getTime()) {
+      const newNextReview = new Date(solvedDate);
+      newNextReview.setDate(newNextReview.getDate() + 1);
+      s.nextReviewAt = newNextReview.toISOString();
+      if (s.reviewInterval === undefined || s.reviewInterval === 7) {
+        s.reviewInterval = 1;
+      }
+      jsonMigrated = true;
+    }
+  });
+  if (jsonMigrated) {
+    writeJsonFile(SOLVED_FILE, solvedList);
+  }
+
   if (!pool) return;
   try {
     const client = await pool.connect();
@@ -1717,9 +1737,12 @@ const initDb = async () => {
     await client.query('ALTER TABLE solved_questions ADD COLUMN IF NOT EXISTS optimized_theory TEXT;');
     await client.query('ALTER TABLE solved_questions ADD COLUMN IF NOT EXISTS repetition INT DEFAULT 0;');
     await client.query('ALTER TABLE solved_questions ADD COLUMN IF NOT EXISTS review_interval INT DEFAULT 1;');
+    await client.query('ALTER TABLE solved_questions ALTER COLUMN review_interval SET DEFAULT 1;');
     await client.query('ALTER TABLE solved_questions ADD COLUMN IF NOT EXISTS easiness DOUBLE PRECISION DEFAULT 2.5;');
     await client.query('ALTER TABLE solved_questions ADD COLUMN IF NOT EXISTS next_review_at TIMESTAMP DEFAULT NOW() + INTERVAL \'1 day\';');
     await client.query('ALTER TABLE solved_questions ALTER COLUMN next_review_at SET DEFAULT NOW() + INTERVAL \'1 day\';');
+    // Align existing records' review date to be 1 day after they were solved if review date is in the past/unset
+    await client.query("UPDATE solved_questions SET next_review_at = solved_at + INTERVAL '1 day', review_interval = 1 WHERE next_review_at <= solved_at OR next_review_at IS NULL;");
 
     // Create DSA Progress Tracker Table
     await client.query(`
@@ -2378,8 +2401,8 @@ app.post('/api/solved', async (req, res) => {
     const existingItem = existingSolvedIdx >= 0 ? solvedList[existingSolvedIdx] : {};
     
     // Calculate default next review for new solved items (1 day from now)
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const nextDay = new Date();
+    nextDay.setDate(nextDay.getDate() + 1);
 
     const solvedItem = {
       questionId,
@@ -2394,7 +2417,7 @@ app.post('/api/solved', async (req, res) => {
       repetition: repetition !== undefined ? parseInt(repetition) : (existingItem.repetition || 0),
       reviewInterval: reviewInterval !== undefined ? parseInt(reviewInterval) : (existingItem.reviewInterval || 1),
       easiness: easiness !== undefined ? parseFloat(easiness) : (existingItem.easiness || 2.5),
-      nextReviewAt: nextReviewAt !== undefined ? nextReviewAt : (existingItem.nextReviewAt || tomorrow.toISOString())
+      nextReviewAt: nextReviewAt !== undefined ? nextReviewAt : (existingItem.nextReviewAt || nextDay.toISOString())
     };
 
     if (existingSolvedIdx >= 0) {
