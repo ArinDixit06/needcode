@@ -496,6 +496,27 @@ function App() {
   // AI Study Companion States
   const [explainTopic, setExplainTopic] = useState('');
   const [explainLoading, setExplainLoading] = useState(false);
+  const [explainSuggestions, setExplainSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  useEffect(() => {
+    if (!explainTopic.trim() || explainTopic.length < 2) {
+      setExplainSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const response = await apiFetch(`/api/questions?search=${encodeURIComponent(explainTopic)}&limit=8`);
+        if (response.ok) {
+          const data = await response.json();
+          setExplainSuggestions(data.questions || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch suggestions:', err);
+      }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [explainTopic]);
   const [hintLoading, setHintLoading] = useState(false);
   const [explanation, setExplanation] = useState<ExplanationResponse | null>(null);
   const [learnConversation, setLearnConversation] = useState<LearnMessage[]>([]);
@@ -2240,14 +2261,75 @@ function App() {
                               : 'Personal context will be assembled from your learning data'}
                           </div>
 
-                          <form onSubmit={handleGetExplanation} style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-                            <input 
-                              type="text" 
-                              placeholder="e.g. Dijkstra's Algorithm, LRU Cache, Segment Tree..."
-                              className="input-field"
-                              value={explainTopic}
-                              onChange={(e) => setExplainTopic(e.target.value)}
-                            />
+                          <form onSubmit={handleGetExplanation} style={{ display: 'flex', gap: '8px', marginBottom: '10px', width: '100%' }}>
+                            <div style={{ position: 'relative', flexGrow: 1 }}>
+                              <input 
+                                type="text" 
+                                placeholder="e.g. Dijkstra's Algorithm, LRU Cache, Segment Tree..."
+                                className="input-field"
+                                style={{ width: '100%' }}
+                                value={explainTopic}
+                                onChange={(e) => {
+                                  setExplainTopic(e.target.value);
+                                  setShowSuggestions(true);
+                                }}
+                                onFocus={() => setShowSuggestions(true)}
+                                onBlur={() => {
+                                  // Wait a tiny bit so clicks on suggestions are registered before the list is hidden
+                                  setTimeout(() => setShowSuggestions(false), 200);
+                                }}
+                              />
+                              
+                              {showSuggestions && explainSuggestions.length > 0 && (
+                                <div style={{
+                                  position: 'absolute',
+                                  top: '100%',
+                                  left: 0,
+                                  right: 0,
+                                  zIndex: 1000,
+                                  backgroundColor: 'var(--bg-card)',
+                                  border: '1px solid var(--border-color)',
+                                  borderRadius: '6px',
+                                  boxShadow: 'var(--shadow-lg)',
+                                  marginTop: '4px',
+                                  maxHeight: '220px',
+                                  overflowY: 'auto'
+                                }}>
+                                  {explainSuggestions.map((q) => (
+                                    <div
+                                      key={q.id}
+                                      onClick={() => {
+                                        setExplainTopic(q.title);
+                                        setExplainSuggestions([]);
+                                        setShowSuggestions(false);
+                                      }}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '8px 12px',
+                                        cursor: 'pointer',
+                                        borderBottom: '1px solid var(--border-color)',
+                                        transition: 'background-color 0.15s',
+                                        fontSize: '0.8rem'
+                                      }}
+                                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+                                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                    >
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span className={`difficulty-badge ${q.difficulty.toLowerCase()}`} style={{ fontSize: '10px', padding: '1px 5px' }}>
+                                          {q.difficulty}
+                                        </span>
+                                        <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{q.title}</span>
+                                      </div>
+                                      <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                                        {q.category}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                             <button 
                               type="submit" 
                               className="button button-primary"
