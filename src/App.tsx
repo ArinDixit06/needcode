@@ -88,6 +88,27 @@ interface LearnMessage {
   content: string;
 }
 
+const formatJump = (val: number) => {
+  if (val === 0) return '0';
+  const prefix = val > 0 ? '▲' : '▼';
+  const absVal = Math.abs(val);
+  let text = '';
+  if (absVal >= 1000000) {
+    text = (absVal / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  } else if (absVal >= 1000) {
+    text = (absVal / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  } else {
+    text = absVal.toLocaleString();
+  }
+  return `${prefix}${text}`;
+};
+
+const getJumpColor = (val: number) => {
+  if (val > 0) return '#10b981'; // Emerald Green
+  if (val < 0) return '#f43f5e'; // Rose Red
+  return 'var(--text-secondary)';
+};
+
 function LoadingDots({ label }: { label: string }) {
   return (
     <div className="loading-dots" role="status" aria-live="polite">
@@ -1666,6 +1687,55 @@ function App() {
                         </div>
                       </div>
                     </div>
+                    {lcProfile.rankingJumps && (
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        backgroundColor: 'var(--bg-secondary)',
+                        padding: '6px 8px',
+                        borderRadius: '6px',
+                        border: '1px solid var(--border-color)',
+                        marginTop: '2px',
+                        marginBottom: '2px'
+                      }}>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+                          Rank Jumps
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px', textAlign: 'center' }}>
+                          <div>
+                            <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)' }}>Week</div>
+                            <div style={{ 
+                              fontSize: '0.75rem', 
+                              fontWeight: 'bold', 
+                              color: getJumpColor(lcProfile.rankingJumps.week)
+                            }}>
+                              {formatJump(lcProfile.rankingJumps.week)}
+                            </div>
+                          </div>
+                          <div style={{ borderLeft: '1px solid var(--border-color)', borderRight: '1px solid var(--border-color)' }}>
+                            <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)' }}>Month</div>
+                            <div style={{ 
+                              fontSize: '0.75rem', 
+                              fontWeight: 'bold', 
+                              color: getJumpColor(lcProfile.rankingJumps.month)
+                            }}>
+                              {formatJump(lcProfile.rankingJumps.month)}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)' }}>Overall</div>
+                            <div style={{ 
+                              fontSize: '0.75rem', 
+                              fontWeight: 'bold', 
+                              color: getJumpColor(lcProfile.rankingJumps.overall)
+                            }}>
+                              {formatJump(lcProfile.rankingJumps.overall)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <button 
                       className="button button-primary" 
                       style={{ fontSize: '0.75rem', padding: '4px 8px', width: '100%' }}

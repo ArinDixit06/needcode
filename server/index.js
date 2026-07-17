@@ -73,6 +73,7 @@ const DSA_STRUCTURES_FILE = path.join(__dirname, 'data', 'dsa_structures.json');
 const GUIDE_PROGRESS_FILE = path.join(__dirname, 'data', 'guide_progress.json');
 const RECOMMENDATIONS_FILE = path.join(__dirname, 'data', 'recommendations.json');
 const PROFILE_FILE = path.join(__dirname, 'data', 'leetcode_profile.json');
+const RANKING_HISTORY_FILE = path.join(__dirname, 'data', 'leetcode_ranking_history.json');
 const DSA_EXERCISES_FILE = path.join(__dirname, 'data', 'dsa_exercises.json');
 const DSA_EXERCISE_SUBMISSIONS_FILE = path.join(__dirname, 'data', 'dsa_exercise_submissions.json');
 const DSA_PATTERNS_FILE = path.join(__dirname, 'data', 'dsa_patterns.json');
@@ -1543,6 +1544,148 @@ const saveCachedProfile = async (username, profileData) => {
   return true;
 };
 
+const recordRankingHistory = async (username, ranking) => {
+  if (!ranking || ranking <= 0) return;
+  
+  if (pool) {
+    try {
+      const lastRecordRes = await pool.query(
+        'SELECT ranking, recorded_at FROM leetcode_ranking_history WHERE username = $1 ORDER BY recorded_at DESC LIMIT 1',
+        [username]
+      );
+      
+      let shouldInsert = false;
+      if (lastRecordRes.rowCount === 0) {
+        shouldInsert = true;
+      } else {
+        const lastRank = lastRecordRes.rows[0].ranking;
+        const lastTime = new Date(lastRecordRes.rows[0].recorded_at);
+        const hoursSinceLast = (new Date() - lastTime) / (1000 * 60 * 60);
+        
+        if (lastRank !== ranking || hoursSinceLast >= 24) {
+          shouldInsert = true;
+        }
+      }
+      
+      if (shouldInsert) {
+        await pool.query(
+          'INSERT INTO leetcode_ranking_history (username, ranking, recorded_at) VALUES ($1, $2, NOW())',
+          [username, ranking]
+        );
+      }
+    } catch (err) {
+      console.error('PostgreSQL recordRankingHistory error:', err.message);
+    }
+    return;
+  }
+  
+  try {
+    const history = readJsonFile(RANKING_HISTORY_FILE, {});
+    const uKey = username.toLowerCase();
+    if (!history[uKey]) {
+      history[uKey] = [];
+    }
+    
+    const userHistory = history[uKey];
+    let shouldInsert = false;
+    
+    if (userHistory.length === 0) {
+      shouldInsert = true;
+    } else {
+      const lastRecord = userHistory[userHistory.length - 1];
+      const lastRank = lastRecord.ranking;
+      const lastTime = new Date(lastRecord.recordedAt);
+      const hoursSinceLast = (new Date() - lastTime) / (1000 * 60 * 60);
+      
+      if (lastRank !== ranking || hoursSinceLast >= 24) {
+        shouldInsert = true;
+      }
+    }
+    
+    if (shouldInsert) {
+      userHistory.push({
+        ranking,
+        recordedAt: new Date().toISOString()
+      });
+      writeJsonFile(RANKING_HISTORY_FILE, history);
+    }
+  } catch (err) {
+    console.error('JSON recordRankingHistory error:', err);
+  }
+};
+
+const getRankingJumps = async (username, currentRanking) => {
+  let history = [];
+  const uKey = username.toLowerCase();
+  
+  if (pool) {
+    try {
+      const result = await pool.query(
+        'SELECT ranking, recorded_at as "recordedAt" FROM leetcode_ranking_history WHERE LOWER(username) = LOWER($1) ORDER BY recorded_at ASC',
+        [username]
+      );
+      history = result.rows.map(r => ({
+        ranking: r.ranking,
+        recordedAt: new Date(r.recordedAt).toISOString()
+      }));
+    } catch (err) {
+      console.error('PostgreSQL getRankingJumps error:', err.message);
+    }
+  } else {
+    const allHistory = readJsonFile(RANKING_HISTORY_FILE, {});
+    history = allHistory[uKey] || [];
+  }
+  
+  if (history.length === 0) {
+    return { week: 0, month: 0, overall: 0 };
+  }
+  
+  const now = new Date();
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  
+  const findClosestRecord = (targetDate) => {
+    let closest = null;
+    let minDiff = Infinity;
+    
+    for (const record of history) {
+      const recordDate = new Date(record.recordedAt);
+      const diff = Math.abs(recordDate - targetDate);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = record;
+      }
+    }
+    return closest;
+  };
+  
+  const oldestRecord = history[0];
+  
+  let weekJump = 0;
+  let monthJump = 0;
+  let overallJump = 0;
+  
+  if (oldestRecord && currentRanking > 0) {
+    overallJump = oldestRecord.ranking - currentRanking;
+    
+    const weekRecord = findClosestRecord(oneWeekAgo);
+    if (weekRecord && (now - new Date(weekRecord.recordedAt)) >= 24 * 60 * 60 * 1000) {
+      weekJump = weekRecord.ranking - currentRanking;
+    }
+    
+    const monthRecord = findClosestRecord(oneMonthAgo);
+    if (monthRecord && (now - new Date(monthRecord.recordedAt)) >= 5 * 24 * 60 * 60 * 1000) {
+      monthJump = monthRecord.ranking - currentRanking;
+    }
+  }
+  
+  return {
+    week: weekJump,
+    month: monthJump,
+    overall: overallJump
+  };
+};
+
 // Helper to query LeetCode Public GraphQL endpoint
 const fetchLeetCodeGraphQL = async (query, variables) => {
   const response = await fetch('https://leetcode.com/graphql', {
@@ -1788,6 +1931,19 @@ const initDb = async () => {
         total_solved INT,
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
+    `);
+
+    // Create LeetCode Ranking History Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS leetcode_ranking_history (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(100) NOT NULL,
+        ranking INT NOT NULL,
+        recorded_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_leetcode_ranking_history_username ON leetcode_ranking_history(username);
     `);
 
     // Create DSA Exercises Table
@@ -2580,7 +2736,13 @@ app.get('/api/leetcode/profile', async (req, res) => {
     if (!data.data.matchedUser) {
       // User not found on LeetCode, return cached if exists
       const cached = await getCachedProfile(username);
-      if (cached) return res.json(cached);
+      if (cached) {
+        const jumps = await getRankingJumps(username, cached.ranking || 0);
+        return res.json({
+          ...cached,
+          rankingJumps: jumps
+        });
+      }
       return res.status(404).json({ error: `LeetCode user "${username}" not found on LeetCode.` });
     }
 
@@ -2605,13 +2767,22 @@ app.get('/api/leetcode/profile', async (req, res) => {
     };
 
     await saveCachedProfile(username, profileData);
-    res.json(profileData);
+    await recordRankingHistory(username, profileData.ranking);
+    const jumps = await getRankingJumps(username, profileData.ranking);
+    res.json({
+      ...profileData,
+      rankingJumps: jumps
+    });
 
   } catch (err) {
     console.warn('Error fetching LeetCode profile directly, falling back to cache:', err.message);
     const cached = await getCachedProfile(username);
     if (cached) {
-      return res.json(cached);
+      const jumps = await getRankingJumps(username, cached.ranking || 0);
+      return res.json({
+        ...cached,
+        rankingJumps: jumps
+      });
     }
     res.status(500).json({ error: 'Failed to fetch LeetCode profile statistics' });
   }
