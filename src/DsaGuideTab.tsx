@@ -4,7 +4,10 @@ import {
   Check, 
   ChevronRight, 
   Code, 
-  Sparkles
+  Sparkles,
+  Trash2,
+  Plus,
+  Search
 } from 'lucide-react';
 import { dsaGuideSections } from './dsaGuideData';
 import type { GuideSection, GuideProblem } from './dsaGuideData';
@@ -121,6 +124,7 @@ interface DsaGuideTabProps {
   onStartPractice: (exerciseId: string) => void;
   onExplainPattern: (pattern: string) => void;
   onGuideProgressError: (message: string) => void;
+  apiFetch: (path: string, init?: RequestInit) => Promise<Response>;
 }
 
 export default function DsaGuideTab({
@@ -130,9 +134,130 @@ export default function DsaGuideTab({
   onDeleteSolved,
   onStartPractice,
   onExplainPattern,
-  onGuideProgressError
+  onGuideProgressError,
+  apiFetch
 }: DsaGuideTabProps) {
   const [selectedSectionId, setSelectedSectionId] = useState<string>('arrays');
+
+  // Custom Guide Problems (extended by user from 3k+ DB)
+  const [customGuideProblems, setCustomGuideProblems] = useState<Record<string, GuideProblem[]>>(() => {
+    try {
+      const saved = localStorage.getItem('needcode_custom_guide_problems');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('needcode_custom_guide_problems', JSON.stringify(customGuideProblems));
+  }, [customGuideProblems]);
+
+  // Search & add UI states
+  const [guideSearchQuery, setGuideSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Question[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [activeSubTab, setActiveSubTab] = useState<'search' | 'manual'>('search');
+
+  // Manual Add Form states
+  const [manualTitle, setManualTitle] = useState('');
+  const [manualUrl, setManualUrl] = useState('');
+  const [manualDifficulty, setManualDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Easy');
+  const [manualPattern, setManualPattern] = useState('');
+
+  // Helper to add a problem
+  const addCustomProblem = (sectionId: string, problem: GuideProblem) => {
+    setCustomGuideProblems(prev => {
+      const currentList = prev[sectionId] || [];
+      if (currentList.some(p => p.title.toLowerCase() === problem.title.toLowerCase())) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [sectionId]: [...currentList, problem]
+      };
+    });
+  };
+
+  // Helper to remove a custom problem
+  const removeCustomProblem = (sectionId: string, problemTitle: string) => {
+    setCustomGuideProblems(prev => {
+      const currentList = prev[sectionId] || [];
+      const updatedList = currentList.filter(p => p.title.toLowerCase() !== problemTitle.toLowerCase());
+      return {
+        ...prev,
+        [sectionId]: updatedList
+      };
+    });
+  };
+
+  // Check if a question is already in the guide
+  const isQuestionInGuide = (qTitle: string) => {
+    const clean = (t: string) => t.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cleanTitle = clean(qTitle);
+    
+    // Check in default problems
+    const inDefault = activeSection?.problems.some(p => clean(p.title) === cleanTitle);
+    if (inDefault) return true;
+    
+    // Check in custom problems
+    const customList = customGuideProblems[selectedSectionId] || [];
+    return customList.some(p => clean(p.title) === cleanTitle);
+  };
+
+  // Handle adding from catalog search
+  const handleAddFromSearch = (q: Question) => {
+    const newProblem: GuideProblem = {
+      title: q.title,
+      patternNote: q.category || 'General',
+      difficulty: q.difficulty,
+      url: q.url || `https://leetcode.com/problems/${q.id || q.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}/`,
+      isCustom: true
+    };
+    addCustomProblem(selectedSectionId, newProblem);
+  };
+
+  // Handle manual link add
+  const handleAddManual = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualTitle || !manualUrl) return;
+    const newProblem: GuideProblem = {
+      title: manualTitle.trim(),
+      patternNote: manualPattern.trim() || 'General',
+      difficulty: manualDifficulty,
+      url: manualUrl.trim(),
+      isCustom: true
+    };
+    addCustomProblem(selectedSectionId, newProblem);
+    setManualTitle('');
+    setManualUrl('');
+    setManualPattern('');
+  };
+
+  // Debounced search effect
+  useEffect(() => {
+    if (!guideSearchQuery || guideSearchQuery.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        setIsSearching(true);
+        const response = await apiFetch(`/api/questions?search=${encodeURIComponent(guideSearchQuery)}&limit=15`);
+        if (response.ok) {
+          const data = await response.json();
+          setSearchResults(data.questions || []);
+        }
+      } catch (err) {
+        console.error('Failed to search database', err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [guideSearchQuery]);
+
   const [guideCheckedTasks, setGuideCheckedTasks] = useState<Record<string, boolean>>(() => {
     try {
       const saved = localStorage.getItem('needcode_guide_checked_tasks');
@@ -296,8 +421,14 @@ export default function DsaGuideTab({
   let completedTasks = 0;
 
   dsaGuideSections.forEach(sec => {
-    totalProblems += sec.problems.length;
+    const customList = customGuideProblems[sec.id] || [];
+    totalProblems += sec.problems.length + customList.length;
     sec.problems.forEach(prob => {
+      if (getSolvedRecord(prob.title)) {
+        solvedProblems++;
+      }
+    });
+    customList.forEach(prob => {
       if (getSolvedRecord(prob.title)) {
         solvedProblems++;
       }
@@ -317,9 +448,13 @@ export default function DsaGuideTab({
 
   // Calculate per-section progress
   const getSectionProgress = (sec: GuideSection) => {
-    const problemsCount = sec.problems.length;
+    const customList = customGuideProblems[sec.id] || [];
+    const problemsCount = sec.problems.length + customList.length;
     let solvedCount = 0;
     sec.problems.forEach(p => {
+      if (getSolvedRecord(p.title)) solvedCount++;
+    });
+    customList.forEach(p => {
       if (getSolvedRecord(p.title)) solvedCount++;
     });
 
@@ -344,14 +479,27 @@ export default function DsaGuideTab({
     milestone.sectionIds.forEach(sid => {
       const sec = dsaGuideSections.find(s => s.id === sid);
       if (sec) {
-        total += sec.problems.length;
+        const customList = customGuideProblems[sid] || [];
+        total += sec.problems.length + customList.length;
         sec.problems.forEach(p => {
+          if (getSolvedRecord(p.title)) solved++;
+        });
+        customList.forEach(p => {
           if (getSolvedRecord(p.title)) solved++;
         });
       }
     });
     return { solved, total, isCompleted: total > 0 && solved === total };
   };
+
+  const activeSectionCustomProblems = customGuideProblems[activeSection.id] || [];
+  const activeSectionDefaultProblems = activeSection.problems || [];
+  
+  // Merge default problems with custom ones, marking custom ones
+  const mergedProblems = [
+    ...activeSectionDefaultProblems,
+    ...activeSectionCustomProblems.map(p => ({ ...p, isCustom: true }))
+  ];
 
   const renderProblemsTable = (problemsList: GuideProblem[], tierName: string) => {
     if (problemsList.length === 0) return null;
@@ -546,6 +694,37 @@ export default function DsaGuideTab({
                                 }}
                               >
                                 <ChevronRight size={14} />
+                              </button>
+                            )}
+
+                            {/* Remove custom problem */}
+                            {prob.isCustom && (
+                              <button
+                                type="button"
+                                onClick={() => removeCustomProblem(activeSection.id, prob.title)}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  color: 'var(--text-secondary)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: '4px',
+                                  borderRadius: '4px',
+                                  transition: 'all 0.15s'
+                                }}
+                                title="Remove from guide"
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.color = '#ff4d4f';
+                                  e.currentTarget.style.backgroundColor = 'rgba(255, 77, 79, 0.08)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.color = 'var(--text-secondary)';
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                              >
+                                <Trash2 size={12} />
                               </button>
                             )}
                           </div>
@@ -1074,10 +1253,253 @@ export default function DsaGuideTab({
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {renderProblemsTable(activeSection.problems.filter(p => p.difficulty === 'Easy'), 'Easy')}
-              {renderProblemsTable(activeSection.problems.filter(p => p.difficulty === 'Medium'), 'Medium')}
-              {renderProblemsTable(activeSection.problems.filter(p => p.difficulty === 'Hard'), 'Hard')}
+              {renderProblemsTable(mergedProblems.filter(p => p.difficulty === 'Easy'), 'Easy')}
+              {renderProblemsTable(mergedProblems.filter(p => p.difficulty === 'Medium'), 'Medium')}
+              {renderProblemsTable(mergedProblems.filter(p => p.difficulty === 'Hard'), 'Hard')}
             </div>
+          </div>
+
+          {/* Section 3: Expand Roadmap */}
+          <div style={{ 
+            borderTop: '1px dashed var(--border-color)', 
+            paddingTop: '24px', 
+            marginTop: '12px' 
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '1.1rem' }}>🧬</span>
+              <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Expand Roadmap ({activeSection.title.split('. ')[1]})
+              </h3>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.4' }}>
+              Search the 3k+ database or add custom LeetCode URLs directly to this section's roadmap.
+            </p>
+
+            {/* Sub-tabs: Search Catalog vs Add manually */}
+            <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', background: 'var(--bg-card)', padding: '2px', borderRadius: '6px', width: 'fit-content', border: '1px solid var(--border-color)' }}>
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('search')}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '4px',
+                  border: 'none',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  background: activeSubTab === 'search' ? 'var(--bg-sidebar)' : 'transparent',
+                  color: activeSubTab === 'search' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  boxShadow: activeSubTab === 'search' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                }}
+              >
+                Search Database
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('manual')}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '4px',
+                  border: 'none',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  background: activeSubTab === 'manual' ? 'var(--bg-sidebar)' : 'transparent',
+                  color: activeSubTab === 'manual' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  boxShadow: activeSubTab === 'manual' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                }}
+              >
+                Add LeetCode Link
+              </button>
+            </div>
+
+            {activeSubTab === 'search' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px', 
+                  background: 'var(--bg-card)', 
+                  border: '1px solid var(--border-color)', 
+                  borderRadius: '6px', 
+                  padding: '4px 10px' 
+                }}>
+                  <Search size={14} className="text-secondary" />
+                  <input
+                    type="text"
+                    placeholder="Search 3k+ database questions (e.g. 'Two Sum', '206')..."
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      width: '100%',
+                      fontSize: '0.8rem',
+                      color: 'var(--text-primary)',
+                      outline: 'none',
+                      padding: '4px 0'
+                    }}
+                    value={guideSearchQuery}
+                    onChange={(e) => setGuideSearchQuery(e.target.value)}
+                  />
+                  {guideSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setGuideSearchQuery('')}
+                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-secondary)' }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                {isSearching && (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '4px' }}>
+                    Searching database...
+                  </div>
+                )}
+
+                {searchResults.length > 0 && (
+                  <div style={{ 
+                    maxHeight: '220px', 
+                    overflowY: 'auto', 
+                    border: '1px solid var(--border-color)', 
+                    borderRadius: '6px',
+                    background: 'var(--bg-card)',
+                    scrollbarWidth: 'thin'
+                  }}>
+                    {searchResults.map((q) => {
+                      const added = isQuestionInGuide(q.title);
+                      return (
+                        <div 
+                          key={q.id}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '8px 12px',
+                            borderBottom: '1px solid var(--border-color)',
+                            fontSize: '0.8rem'
+                          }}
+                        >
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{q.title}</span>
+                              <span className={`difficulty-badge ${q.difficulty.toLowerCase()}`} style={{ scale: '0.85' }}>
+                                {q.difficulty}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                              Category: {q.category || 'General'}
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={added}
+                            onClick={() => handleAddFromSearch(q)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '4px 10px',
+                              borderRadius: '4px',
+                              border: `1px solid ${added ? 'var(--border-color)' : 'var(--accent-primary)'}`,
+                              background: added ? 'transparent' : 'rgba(47, 158, 119, 0.08)',
+                              color: added ? 'var(--text-muted)' : 'var(--accent-primary)',
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              cursor: added ? 'default' : 'pointer',
+                              transition: 'all 0.15s'
+                            }}
+                          >
+                            {added ? 'Added' : <>+ Add</>}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {guideSearchQuery.trim().length >= 2 && !isSearching && searchResults.length === 0 && (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '12px', border: '1px dashed var(--border-color)', borderRadius: '6px' }}>
+                    No matching database questions found. You can add it manually using the "Add LeetCode Link" tab.
+                  </div>
+                )}
+              </div>
+            ) : (
+              <form onSubmit={handleAddManual} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Problem Title</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="e.g. Subsets II"
+                      value={manualTitle}
+                      onChange={(e) => setManualTitle(e.target.value)}
+                      required
+                      style={{ fontSize: '0.8rem', padding: '6px 10px' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>LeetCode URL</label>
+                    <input
+                      type="url"
+                      className="input-field"
+                      placeholder="https://leetcode.com/problems/..."
+                      value={manualUrl}
+                      onChange={(e) => setManualUrl(e.target.value)}
+                      required
+                      style={{ fontSize: '0.8rem', padding: '6px 10px' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Difficulty</label>
+                    <select
+                      className="select-field"
+                      value={manualDifficulty}
+                      onChange={(e) => setManualDifficulty(e.target.value as any)}
+                      style={{ fontSize: '0.8rem', padding: '6px 10px' }}
+                    >
+                      <option value="Easy">Easy</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Hard">Hard</option>
+                    </select>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Pattern / Concept Target</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="e.g. backtracking with duplicates"
+                      value={manualPattern}
+                      onChange={(e) => setManualPattern(e.target.value)}
+                      style={{ fontSize: '0.8rem', padding: '6px 10px' }}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="button"
+                  style={{
+                    alignSelf: 'flex-start',
+                    padding: '8px 16px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginTop: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Plus size={14} /> Add Custom Question
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </div>

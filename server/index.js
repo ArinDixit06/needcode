@@ -1637,10 +1637,11 @@ const getRankingJumps = async (username, currentRanking) => {
   }
   
   if (history.length === 0) {
-    return { week: 0, month: 0, overall: 0 };
+    return { day: 0, week: 0, month: 0, overall: 0 };
   }
   
   const now = new Date();
+  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   
@@ -1661,12 +1662,18 @@ const getRankingJumps = async (username, currentRanking) => {
   
   const oldestRecord = history[0];
   
+  let dayJump = 0;
   let weekJump = 0;
   let monthJump = 0;
   let overallJump = 0;
   
   if (oldestRecord && currentRanking > 0) {
     overallJump = oldestRecord.ranking - currentRanking;
+    
+    const dayRecord = findClosestRecord(oneDayAgo);
+    if (dayRecord && (now - new Date(dayRecord.recordedAt)) >= 4 * 60 * 60 * 1000) {
+      dayJump = dayRecord.ranking - currentRanking;
+    }
     
     const weekRecord = findClosestRecord(oneWeekAgo);
     if (weekRecord && (now - new Date(weekRecord.recordedAt)) >= 24 * 60 * 60 * 1000) {
@@ -1680,6 +1687,7 @@ const getRankingJumps = async (username, currentRanking) => {
   }
   
   return {
+    day: dayJump,
     week: weekJump,
     month: monthJump,
     overall: overallJump

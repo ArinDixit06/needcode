@@ -3,6 +3,7 @@ export interface GuideProblem {
   patternNote: string;
   difficulty: 'Easy' | 'Medium' | 'Hard';
   url: string;
+  isCustom?: boolean;
 }
 
 export interface GuideSection {

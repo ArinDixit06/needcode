@@ -1702,8 +1702,18 @@ function App() {
                         <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.03em', textTransform: 'uppercase' }}>
                           Rank Jumps
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px', textAlign: 'center' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', textAlign: 'center' }}>
                           <div>
+                            <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)' }}>Day</div>
+                            <div style={{ 
+                              fontSize: '0.75rem', 
+                              fontWeight: 'bold', 
+                              color: getJumpColor(lcProfile.rankingJumps.day)
+                            }}>
+                              {formatJump(lcProfile.rankingJumps.day)}
+                            </div>
+                          </div>
+                          <div style={{ borderLeft: '1px solid var(--border-color)' }}>
                             <div style={{ fontSize: '0.55rem', color: 'var(--text-secondary)' }}>Week</div>
                             <div style={{ 
                               fontSize: '0.75rem', 
@@ -3141,6 +3151,7 @@ function App() {
                       onStartPractice={startPractice}
                       onExplainPattern={handleExplainPattern}
                       onGuideProgressError={(message) => showToast(message, 'error')}
+                      apiFetch={apiFetch}
                     />
                   )}
 
