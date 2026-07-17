@@ -549,6 +549,9 @@ export default function DsaGuideTab({
     const solvedCount = problemsList.filter(p => getSolvedRecord(p.title)).length;
     const isExpanded = !!expandedTiers[tierName];
     
+    const curated = problemsList.filter(p => !p.isAutoExpanded);
+    const expanded = problemsList.filter(p => p.isAutoExpanded);
+    
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
         {/* Tier Header Toggle */}
@@ -602,7 +605,7 @@ export default function DsaGuideTab({
               borderRadius: 'var(--radius-md)', 
               overflow: 'hidden', 
               background: 'var(--bg-card)',
-              maxHeight: problemsList.length > 6 ? '280px' : 'none',
+              maxHeight: problemsList.length > 8 ? '360px' : 'none',
               overflowY: 'auto',
               scrollbarWidth: 'thin'
             }}
@@ -619,14 +622,14 @@ export default function DsaGuideTab({
                 </tr>
               </thead>
               <tbody>
-                {problemsList.map((prob, idx) => {
+                {curated.map((prob, idx) => {
                   const solvedRecord = getSolvedRecord(prob.title);
                   const isSolved = !!solvedRecord;
                   const sandboxId = getPlaygroundExerciseId(prob.title);
                   const isNotesExpanded = !!expandedNotesProblems[prob.title];
 
                   return (
-                    <React.Fragment key={idx}>
+                    <React.Fragment key={`curated-${idx}`}>
                       <tr style={{ background: isSolved ? 'rgba(47, 158, 119, 0.015)' : 'transparent' }}>
                         {/* Checklist Checkbox */}
                         <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
@@ -767,6 +770,199 @@ export default function DsaGuideTab({
                                 }}
                               >
                                 <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Collapsible Solution Notes (Notion-style Indent Block) */}
+                      {isSolved && solvedRecord && solvedRecord.notes && isNotesExpanded && (
+                        <tr>
+                          <td colSpan={6} style={{ padding: '4px 12px 12px 12px', borderBottom: '1px solid var(--border-color)' }}>
+                            <div className="notion-notes-indent">
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600, fontSize: '0.72rem', marginBottom: '4px', color: 'var(--text-primary)' }}>
+                                <Sparkles size={11} style={{ color: 'var(--text-callout-warning)' }} /> MY LOGGED INSIGHTS:
+                              </div>
+                              <p style={{ margin: 0, color: 'var(--text-primary)', fontSize: '0.78rem', whiteSpace: 'pre-wrap' }}>
+                                {solvedRecord.notes}
+                              </p>
+                              <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: '6px', fontFamily: 'var(--font-mono)' }}>
+                                Solved on {new Date(solvedRecord.solvedAt).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+
+                {expanded.length > 0 && (
+                  <tr style={{ background: 'var(--bg-sidebar)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)' }}>
+                    <td colSpan={6} style={{ 
+                      padding: '8px 12px', 
+                      fontSize: '0.72rem', 
+                      fontWeight: 700, 
+                      color: 'var(--text-secondary)',
+                      letterSpacing: '0.5px',
+                      textTransform: 'uppercase'
+                    }}>
+                      📚 Additional Practice Catalog ({expanded.length})
+                    </td>
+                  </tr>
+                )}
+
+                {expanded.map((prob, idx) => {
+                  const solvedRecord = getSolvedRecord(prob.title);
+                  const isSolved = !!solvedRecord;
+                  const sandboxId = getPlaygroundExerciseId(prob.title);
+                  const isNotesExpanded = !!expandedNotesProblems[prob.title];
+                  const absoluteIdx = curated.length + idx;
+
+                  return (
+                    <React.Fragment key={`expanded-${idx}`}>
+                      <tr style={{ background: isSolved ? 'rgba(47, 158, 119, 0.015)' : 'transparent' }}>
+                        {/* Checklist Checkbox */}
+                        <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
+                          <label className="checkbox-container">
+                            <input 
+                              type="checkbox" 
+                              checked={isSolved}
+                              onChange={() => handleCheckboxChange(prob, activeSection)}
+                            />
+                            <span className="checkmark">
+                              {isSolved && <Check size={10} className="text-white" />}
+                            </span>
+                          </label>
+                        </td>
+                        
+                        {/* Row Index */}
+                        <td style={{ color: 'var(--text-muted)', fontWeight: 500, fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>
+                          {absoluteIdx + 1}
+                        </td>
+                        
+                        {/* Title with LeetCode Link */}
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <a 
+                              href={prob.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="q-title"
+                              style={{ fontWeight: 500, fontSize: '0.82rem' }}
+                            >
+                              {prob.title}
+                            </a>
+                            <a href={prob.url} target="_blank" rel="noopener noreferrer" title="View on LeetCode" style={{ display: 'inline-flex', opacity: 0.5 }}>
+                              <ExternalLink size={11} className="text-secondary" />
+                            </a>
+                          </div>
+                        </td>
+                        
+                        {/* Difficulty badge */}
+                        <td>
+                          <span className={`difficulty-badge ${prob.difficulty.toLowerCase()}`}>
+                            {prob.difficulty}
+                          </span>
+                        </td>
+                        
+                        {/* Pattern Tag */}
+                        <td>
+                          <button
+                            type="button"
+                            onClick={() => onExplainPattern(prob.patternNote)}
+                            className="concept-badge"
+                            style={{
+                              cursor: 'pointer',
+                              border: '1px solid var(--border-color)',
+                              background: 'var(--bg-hover)',
+                              textAlign: 'left',
+                              display: 'inline-block',
+                              transition: 'all 0.15s'
+                            }}
+                            title="Click to learn from brute force to optimised"
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = 'var(--accent-primary)';
+                              e.currentTarget.style.color = 'var(--accent-primary)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = 'var(--border-color)';
+                              e.currentTarget.style.color = 'var(--text-secondary)';
+                            }}
+                          >
+                            {prob.patternNote}
+                          </button>
+                        </td>
+                        
+                        {/* Action Items */}
+                        <td>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
+                            {/* Pin to core */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const qVirtual = {
+                                  id: `guide-${prob.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+                                  title: prob.title,
+                                  difficulty: prob.difficulty,
+                                  category: activeSection.title.split('. ')[1] || 'General',
+                                  url: prob.url,
+                                  description: prob.patternNote
+                                };
+                                handleAddFromSearch(qVirtual);
+                              }}
+                              style={{
+                                border: '1px solid var(--accent-primary)',
+                                background: 'rgba(47, 158, 119, 0.08)',
+                                color: 'var(--accent-primary)',
+                                fontSize: '0.65rem',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '2px'
+                              }}
+                              title="Pin to core Curated Problems"
+                            >
+                              📌 Pin
+                            </button>
+
+                            {/* Redirect to coding editor sandbox */}
+                            {sandboxId && (
+                              <button
+                                className="button button-ghost"
+                                style={{ 
+                                  padding: '4px 8px', 
+                                  fontSize: '0.7rem', 
+                                  color: 'var(--accent-primary)', 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  gap: '4px',
+                                  border: '1px solid var(--border-color)',
+                                  borderRadius: 'var(--radius-sm)'
+                                }}
+                                onClick={() => onStartPractice(sandboxId)}
+                                title="Practice in browser sandbox"
+                              >
+                                <Code size={11} /> Sandbox
+                              </button>
+                            )}
+
+                            {/* Toggle solution notes */}
+                            {isSolved && solvedRecord.notes && (
+                              <button
+                                type="button"
+                                className="chevron-toggle"
+                                onClick={() => toggleNotes(prob.title)}
+                                title="View My Logged Notes"
+                                style={{
+                                  transform: isNotesExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
+                                }}
+                              >
+                                <ChevronRight size={14} />
                               </button>
                             )}
                           </div>
@@ -1295,9 +1491,33 @@ export default function DsaGuideTab({
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {renderProblemsTable(mergedProblems.filter(p => p.difficulty === 'Easy'), 'Easy')}
-              {renderProblemsTable(mergedProblems.filter(p => p.difficulty === 'Medium'), 'Medium')}
-              {renderProblemsTable(mergedProblems.filter(p => p.difficulty === 'Hard'), 'Hard')}
+              {(() => {
+                const getCombinedProblems = (tierName: string) => {
+                  const curatedAndCustom = mergedProblems.filter(p => p.difficulty === tierName);
+                  const autoExpanded = autoExpandedQuestions
+                    .filter(q => q.difficulty === tierName && !curatedAndCustom.some(p => p.title.toLowerCase() === q.title.toLowerCase()))
+                    .map(q => ({
+                      title: q.title,
+                      patternNote: q.category || 'General',
+                      difficulty: q.difficulty as 'Easy' | 'Medium' | 'Hard',
+                      url: q.url || `https://leetcode.com/problems/${q.id || q.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}/`,
+                      isAutoExpanded: true
+                    }));
+                  return [...curatedAndCustom, ...autoExpanded];
+                };
+
+                const combinedEasy = getCombinedProblems('Easy');
+                const combinedMedium = getCombinedProblems('Medium');
+                const combinedHard = getCombinedProblems('Hard');
+
+                return (
+                  <>
+                    {renderProblemsTable(combinedEasy, 'Easy')}
+                    {renderProblemsTable(combinedMedium, 'Medium')}
+                    {renderProblemsTable(combinedHard, 'Hard')}
+                  </>
+                );
+              })()}
             </div>
           </div>
 
@@ -1544,242 +1764,7 @@ export default function DsaGuideTab({
             )}
           </div>
 
-          {/* Section 4: Auto-Expanded Practice Catalog */}
-          <div style={{ 
-            borderTop: '1px dashed var(--border-color)', 
-            paddingTop: '24px', 
-            marginTop: '12px' 
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span style={{ fontSize: '1.1rem' }}>📚</span>
-              <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Auto-Expanded Catalog ({activeSection.title.split('. ')[1]})
-              </h3>
-            </div>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.4' }}>
-              We've scanned the 3,000+ question database and automatically loaded matching questions for this topic below.
-            </p>
 
-            {/* Filter and Search controls */}
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
-              {/* Search */}
-              <div style={{ 
-                flexGrow: 1, 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px', 
-                background: 'var(--bg-card)', 
-                border: '1px solid var(--border-color)', 
-                borderRadius: '6px', 
-                padding: '4px 10px',
-                minWidth: '200px'
-              }}>
-                <Search size={14} className="text-secondary" />
-                <input
-                  type="text"
-                  placeholder={`Search database ${activeSection.title.split('. ')[1]} questions...`}
-                  style={{
-                    border: 'none',
-                    background: 'transparent',
-                    width: '100%',
-                    fontSize: '0.8rem',
-                    color: 'var(--text-primary)',
-                    outline: 'none',
-                    padding: '4px 0'
-                  }}
-                  value={autoSearch}
-                  onChange={(e) => setAutoSearch(e.target.value)}
-                />
-              </div>
-
-              {/* Difficulty filter */}
-              <div>
-                <select
-                  className="select-field"
-                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                  value={autoDifficulty}
-                  onChange={(e) => {
-                    setAutoDifficulty(e.target.value);
-                    setAutoCurrentPage(1);
-                  }}
-                >
-                  <option value="All">All Difficulties</option>
-                  <option value="Easy">Easy</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Hard">Hard</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Table or loading state */}
-            {autoLoading ? (
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', padding: '20px 0', textAlign: 'center' }}>
-                Loading extra questions...
-              </div>
-            ) : autoExpandedQuestions.length === 0 ? (
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', padding: '20px 0', textAlign: 'center', border: '1px dashed var(--border-color)', borderRadius: '6px' }}>
-                No database questions found matching current filters.
-              </div>
-            ) : (
-              <div 
-                className="table-container" 
-                style={{ 
-                  border: '1px solid var(--border-color)', 
-                  borderRadius: 'var(--radius-md)', 
-                  overflow: 'hidden', 
-                  background: 'var(--bg-card)'
-                }}
-              >
-                <table className="problems-drill-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '45px', textAlign: 'center' }}>Done</th>
-                      <th>Problem Name</th>
-                      <th style={{ width: '100px' }}>Difficulty</th>
-                      <th>Category</th>
-                      <th style={{ width: '100px', textAlign: 'center' }}>Pin</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {autoExpandedQuestions.map((q) => {
-                      const solvedRecord = getSolvedRecord(q.title);
-                      const isSolved = !!solvedRecord;
-                      const isPinned = isQuestionInGuide(q.title);
-
-                      const wrapQ: GuideProblem = {
-                        title: q.title,
-                        difficulty: q.difficulty,
-                        url: q.url || `https://leetcode.com/problems/${q.id || q.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}/`,
-                        patternNote: q.category || 'General'
-                      };
-
-                      return (
-                        <tr key={q.id} style={{ background: isSolved ? 'rgba(47, 158, 119, 0.015)' : 'transparent' }}>
-                          {/* Done Checkbox */}
-                          <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
-                            <label className="checkbox-container">
-                              <input 
-                                type="checkbox" 
-                                checked={isSolved}
-                                onChange={() => handleCheckboxChange(wrapQ, activeSection)}
-                              />
-                              <span className="checkmark">
-                                {isSolved && <Check size={10} className="text-white" />}
-                              </span>
-                            </label>
-                          </td>
-
-                          {/* Problem Title */}
-                          <td>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <a 
-                                href={wrapQ.url} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                                className="q-title"
-                                style={{ fontWeight: 500, fontSize: '0.82rem' }}
-                              >
-                                {q.title}
-                              </a>
-                              <a href={wrapQ.url} target="_blank" rel="noopener noreferrer" title="View on LeetCode" style={{ display: 'inline-flex', opacity: 0.5 }}>
-                                <ExternalLink size={11} className="text-secondary" />
-                              </a>
-                            </div>
-                          </td>
-
-                          {/* Difficulty */}
-                          <td>
-                            <span className={`difficulty-badge ${q.difficulty.toLowerCase()}`}>
-                              {q.difficulty}
-                            </span>
-                          </td>
-
-                          {/* Category */}
-                          <td>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                              {q.category || 'General'}
-                            </span>
-                          </td>
-
-                          {/* Pin to Core */}
-                          <td style={{ textAlign: 'center' }}>
-                            <button
-                              type="button"
-                              disabled={isPinned}
-                              onClick={() => handleAddFromSearch(q)}
-                              style={{
-                                border: `1px solid ${isPinned ? 'var(--border-color)' : 'var(--accent-primary)'}`,
-                                background: isPinned ? 'transparent' : 'rgba(47, 158, 119, 0.08)',
-                                color: isPinned ? 'var(--text-muted)' : 'var(--accent-primary)',
-                                fontSize: '0.7rem',
-                                padding: '3px 8px',
-                                borderRadius: '4px',
-                                cursor: isPinned ? 'default' : 'pointer',
-                                fontWeight: 600,
-                                transition: 'all 0.15s'
-                              }}
-                              title={isPinned ? 'Already in your core guide' : 'Pin to core Curated Problems'}
-                            >
-                              {isPinned ? 'Pinned' : '📌 Pin'}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-
-                {/* Pagination Controls */}
-                {autoTotalCount > 10 && (
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    padding: '8px 12px',
-                    borderTop: '1px solid var(--border-color)',
-                    background: 'var(--bg-sidebar)',
-                    fontSize: '0.75rem'
-                  }}>
-                    <button
-                      type="button"
-                      disabled={autoCurrentPage === 1}
-                      onClick={() => setAutoCurrentPage(p => Math.max(1, p - 1))}
-                      style={{
-                        padding: '4px 10px',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: '4px',
-                        background: 'var(--bg-card)',
-                        color: 'var(--text-primary)',
-                        cursor: autoCurrentPage === 1 ? 'default' : 'pointer',
-                        opacity: autoCurrentPage === 1 ? 0.5 : 1
-                      }}
-                    >
-                      Previous
-                    </button>
-                    <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-                      Page {autoCurrentPage} of {Math.ceil(autoTotalCount / 10)} ({autoTotalCount} total)
-                    </span>
-                    <button
-                      type="button"
-                      disabled={autoCurrentPage >= Math.ceil(autoTotalCount / 10)}
-                      onClick={() => setAutoCurrentPage(p => Math.min(Math.ceil(autoTotalCount / 10), p + 1))}
-                      style={{
-                        padding: '4px 10px',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: '4px',
-                        background: 'var(--bg-card)',
-                        color: 'var(--text-primary)',
-                        cursor: autoCurrentPage >= Math.ceil(autoTotalCount / 10) ? 'default' : 'pointer',
-                        opacity: autoCurrentPage >= Math.ceil(autoTotalCount / 10) ? 0.5 : 1
-                      }}
-                    >
-                      Next
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </div>
