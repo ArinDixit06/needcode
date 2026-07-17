@@ -1403,11 +1403,55 @@ const buildAiContext = async ({ topic = '', focusGoal = '', launchProblemId = ''
       notesExcerpt: truncateText(item.notes)
     }));
 
-  const launchProblem = questions.find(question =>
-    normalizeForMatch(question.id) === normalizeForMatch(launchProblemId) ||
-    normalizeForMatch(question.title) === normalizeForMatch(launchProblemId) ||
-    normalizeForMatch(question.title) === normalizeForMatch(topic)
-  );
+  let launchProblem = null;
+  const targetQuery = launchProblemId || topic;
+  if (targetQuery) {
+    const queryStr = normalizeForMatch(targetQuery);
+    if (queryStr) {
+      // 1. Exact match priority
+      launchProblem = questions.find(q =>
+        normalizeForMatch(q.id) === queryStr ||
+        normalizeForMatch(q.title) === queryStr
+      );
+
+      // 2. Substring & Token-overlap priority
+      if (!launchProblem) {
+        let bestScore = 0;
+        const queryWords = targetQuery.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+        
+        for (const question of questions) {
+          const normTitle = normalizeForMatch(question.title);
+          
+          if (normTitle.includes(queryStr) || queryStr.includes(normTitle)) {
+            launchProblem = question;
+            break;
+          }
+
+          const titleWords = question.title.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+          let matchCount = 0;
+          
+          queryWords.forEach(word => {
+            if (titleWords.includes(word)) {
+              matchCount++;
+            }
+          });
+
+          if (matchCount > 0) {
+            const score = matchCount / Math.max(queryWords.length, titleWords.length);
+            if (score > bestScore && score >= 0.4) {
+              bestScore = score;
+              launchProblem = question;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (launchProblem) {
+    console.log(`Matched query "${targetQuery}" to database question: "${launchProblem.title}"`);
+  }
+
   const launchPattern = launchProblem ? getPatternKey(launchProblem) : '';
   const lastRelatedProblem = launchPattern
     ? recentActivity.find(item => normalizeForMatch(item.pattern) === normalizeForMatch(launchPattern)) || null
