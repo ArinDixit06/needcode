@@ -3023,7 +3023,10 @@ app.post('/api/leetcode/import-all', async (req, res) => {
 
 // POST get recommendations from AI (OpenRouter)
 app.post('/api/recommend', async (req, res) => {
-  const userApiKey = req.headers['x-openrouter-key'];
+  let userApiKey = req.headers['x-openrouter-key'];
+  if (userApiKey === 'null' || userApiKey === 'undefined' || userApiKey === '') {
+    userApiKey = null;
+  }
   const apiKey = userApiKey || process.env.OPENROUTER_API_KEY;
   const { model = 'openrouter/free', customInstruction = '' } = req.body;
 
@@ -3156,8 +3159,7 @@ Please recommend 3-4 specific LeetCode questions that represent the best learnin
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
-          ],
-          response_format: { type: 'json_object' }
+          ]
         }),
         signal: controller.signal
       });
@@ -3213,7 +3215,10 @@ Please recommend 3-4 specific LeetCode questions that represent the best learnin
 
 // POST ask AI to explain a data structure or problem
 app.post('/api/explain', async (req, res) => {
-  const userApiKey = req.headers['x-openrouter-key'];
+  let userApiKey = req.headers['x-openrouter-key'];
+  if (userApiKey === 'null' || userApiKey === 'undefined' || userApiKey === '') {
+    userApiKey = null;
+  }
   const apiKey = userApiKey || process.env.OPENROUTER_API_KEY;
   const { topic, hintOnly, focusGoal = '', launchProblemId = '', conversation = [], model = 'openrouter/free' } = req.body; // hintOnly: true returns only patternTag + constraintReading
 
