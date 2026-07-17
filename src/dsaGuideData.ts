@@ -4,6 +4,7 @@ export interface GuideProblem {
   difficulty: 'Easy' | 'Medium' | 'Hard';
   url: string;
   isCustom?: boolean;
+  isAutoExpanded?: boolean;
 }
 
 export interface GuideSection {

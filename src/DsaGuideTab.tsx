@@ -167,45 +167,28 @@ export default function DsaGuideTab({
 
   // Auto-Expanded Questions from database
   const [autoExpandedQuestions, setAutoExpandedQuestions] = useState<Question[]>([]);
-  const [autoTotalCount, setAutoTotalCount] = useState(0);
-  const [autoCurrentPage, setAutoCurrentPage] = useState(1);
-  const [autoLoading, setAutoLoading] = useState(false);
-  const [autoDifficulty, setAutoDifficulty] = useState('All');
-  const [autoSearch, setAutoSearch] = useState('');
 
   const fetchAutoExpandedQuestions = async () => {
     try {
-      setAutoLoading(true);
       const queryParams = new URLSearchParams({
-        difficulty: autoDifficulty,
-        search: autoSearch,
-        page: autoCurrentPage.toString(),
-        limit: '10'
+        difficulty: 'All',
+        search: '',
+        page: '1',
+        limit: '150'
       });
       const response = await apiFetch(`/api/guide/auto-expand/${selectedSectionId}?${queryParams.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setAutoExpandedQuestions(data.questions || []);
-        setAutoTotalCount(data.totalCount || 0);
       }
     } catch (err) {
       console.error('Failed to fetch auto-expanded questions', err);
-    } finally {
-      setAutoLoading(false);
     }
   };
 
   useEffect(() => {
     fetchAutoExpandedQuestions();
-  }, [selectedSectionId, autoCurrentPage, autoDifficulty]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setAutoCurrentPage(1);
-      fetchAutoExpandedQuestions();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [autoSearch]);
+  }, [selectedSectionId]);
 
   // Helper to add a problem
   const addCustomProblem = (sectionId: string, problem: GuideProblem) => {
