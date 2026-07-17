@@ -346,6 +346,35 @@ const MODELS = [
 
 const SUGGESTIONS = ["Trie", "Segment Tree", "AVL Tree", "Dijkstra's Algorithm", "Monotonic Stack", "LRU Cache", "Binary Search"];
 
+const STUDY_TOPICS = [
+  'Arrays & Hashing',
+  'Two Pointers',
+  'Sliding Window',
+  'Stack',
+  'Monotonic Stack',
+  'Queue',
+  'Monotonic Queue',
+  'Linked List',
+  'Hash Table',
+  'Binary Search',
+  'Tree',
+  'Binary Tree',
+  'Binary Search Tree',
+  'Heap (Priority Queue)',
+  'Trie',
+  'Graph',
+  'Depth-First Search',
+  'Breadth-First Search',
+  'Dynamic Programming',
+  'Greedy',
+  'Backtracking',
+  'Segment Tree',
+  'Binary Indexed Tree',
+  'Union Find',
+  'Bit Manipulation',
+  'Math & Geometry'
+];
+
 const TOPIC_ICONS: Record<string, string> = {
   'arrays': '📊',
   'two-pointers': '🔍',
@@ -500,21 +529,39 @@ function App() {
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
-    if (!explainTopic.trim() || explainTopic.length < 2) {
+    if (!explainTopic.trim()) {
       setExplainSuggestions([]);
       return;
     }
     const timer = setTimeout(async () => {
       try {
-        const response = await apiFetch(`/api/questions?search=${encodeURIComponent(explainTopic)}&limit=8`);
+        const queryLower = explainTopic.toLowerCase();
+        
+        // 1. Filter local categories/topics
+        const matchedTopics = STUDY_TOPICS.filter(topicName => 
+          topicName.toLowerCase().includes(queryLower)
+        ).map(topicName => ({
+          id: `topic-${topicName.replace(/\s+/g, '-').toLowerCase()}`,
+          title: topicName,
+          difficulty: 'Topic',
+          category: 'DSA Concept',
+          isConcept: true
+        }));
+
+        // 2. Fetch database questions
+        const response = await apiFetch(`/api/questions?search=${encodeURIComponent(explainTopic)}&limit=10`);
+        let dbQuestions = [];
         if (response.ok) {
           const data = await response.json();
-          setExplainSuggestions(data.questions || []);
+          dbQuestions = data.questions || [];
         }
+
+        // Combine both
+        setExplainSuggestions([...matchedTopics, ...dbQuestions].slice(0, 10));
       } catch (err) {
         console.error('Failed to fetch suggestions:', err);
       }
-    }, 200);
+    }, 150);
     return () => clearTimeout(timer);
   }, [explainTopic]);
   const [hintLoading, setHintLoading] = useState(false);
@@ -2317,7 +2364,20 @@ function App() {
                                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                     >
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span className={`difficulty-badge ${q.difficulty.toLowerCase()}`} style={{ fontSize: '10px', padding: '1px 5px' }}>
+                                        <span 
+                                          style={{ 
+                                            fontSize: '10px', 
+                                            padding: '2px 6px',
+                                            borderRadius: '4px',
+                                            fontWeight: 600,
+                                            textTransform: 'uppercase',
+                                            fontFamily: 'var(--font-mono)',
+                                            background: q.difficulty === 'Topic' ? 'rgba(0, 122, 255, 0.15)' : 'transparent',
+                                            color: q.difficulty === 'Topic' ? '#007aff' : 'inherit',
+                                            display: 'inline-block'
+                                          }}
+                                          className={q.difficulty !== 'Topic' ? `difficulty-badge ${q.difficulty.toLowerCase()}` : ''}
+                                        >
                                           {q.difficulty}
                                         </span>
                                         <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{q.title}</span>
