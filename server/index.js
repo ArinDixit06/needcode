@@ -2397,6 +2397,102 @@ app.get('/api/company-questions', async (req, res) => {
   }
 });
 
+// GET auto-expanded questions for a guide section
+app.get('/api/guide/auto-expand/:sectionId', async (req, res) => {
+  const { sectionId } = req.params;
+  const search = req.query.search || '';
+  const difficulty = req.query.difficulty || 'All';
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 15;
+
+  const SECTION_CATEGORY_MAP = {
+    'arrays': ['Array', 'Two Pointers', 'Matrix', 'Arrays & Hashing', 'Sliding Window'],
+    'strings': ['String', 'Sliding Window'],
+    'linked-lists': ['Linked List'],
+    'stacks': ['Stack', 'Monotonic Stack'],
+    'queues': ['Queue', 'Monotonic Queue'],
+    'hash-tables': ['Hash Table', 'Arrays & Hashing'],
+    'trees': ['Tree', 'Binary Tree', 'Binary Search Tree', 'Trees'],
+    'heaps': ['Heap (Priority Queue)', 'Heap / Priority Queue'],
+    'tries': ['Trie'],
+    'graphs': ['Graph', 'Depth-First Search', 'Breadth-First Search', 'Graphs'],
+    'dynamic-programming': ['Dynamic Programming', 'Greedy', 'Backtracking'],
+    'advanced': ['Segment Tree', 'Binary Indexed Tree', 'Union Find', 'Bit Manipulation', 'Math & Geometry', 'Advanced']
+  };
+
+  const categories = SECTION_CATEGORY_MAP[sectionId] || [];
+
+  if (categories.length === 0) {
+    return res.json({ questions: [], totalCount: 0 });
+  }
+
+  try {
+    let resultQuestions = [];
+    let totalCount = 0;
+
+    if (pool) {
+      // Postgres implementation
+      let queryStr = 'SELECT id, title, difficulty, category, url, description FROM questions WHERE category = ANY($1)';
+      const queryParams = [categories];
+      let paramCount = 2;
+
+      if (search) {
+        queryStr += ` AND (title ILIKE $${paramCount} OR description ILIKE $${paramCount})`;
+        queryParams.push(`%${search}%`);
+        paramCount++;
+      }
+
+      if (difficulty !== 'All') {
+        queryStr += ` AND difficulty = $${paramCount}`;
+        queryParams.push(difficulty);
+        paramCount++;
+      }
+
+      // Count query
+      const countQueryStr = `SELECT COUNT(*) FROM (${queryStr}) as temp`;
+      const countResult = await pool.query(countQueryStr, queryParams);
+      totalCount = parseInt(countResult.rows[0].count, 10);
+
+      // Paginated query ordered alphabetically
+      queryStr += ` ORDER BY title ASC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+      queryParams.push(limit);
+      queryParams.push((page - 1) * limit);
+
+      const qResult = await pool.query(queryStr, queryParams);
+      resultQuestions = qResult.rows;
+    } else {
+      // JSON Fallback implementation
+      const allQuestions = readJsonFile(QUESTIONS_FILE, []);
+      const lowerCats = categories.map(c => c.toLowerCase());
+      let filtered = allQuestions.filter(q => q.category && lowerCats.includes(q.category.toLowerCase()));
+
+      if (search) {
+        const s = search.toLowerCase();
+        filtered = filtered.filter(q => 
+          q.title.toLowerCase().includes(s) || 
+          (q.description && q.description.toLowerCase().includes(s))
+        );
+      }
+
+      if (difficulty !== 'All') {
+        filtered = filtered.filter(q => q.difficulty === difficulty);
+      }
+
+      totalCount = filtered.length;
+      filtered.sort((a, b) => a.title.localeCompare(b.title));
+      resultQuestions = filtered.slice((page - 1) * limit, page * limit);
+    }
+
+    res.json({
+      questions: resultQuestions,
+      totalCount
+    });
+  } catch (err) {
+    console.error('Error auto-expanding guide:', err);
+    res.status(500).json({ error: 'Failed to auto-expand guide section questions' });
+  }
+});
+
 // GET all solved questions details
 app.get('/api/solved', async (req, res) => {
   try {

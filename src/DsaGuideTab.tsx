@@ -165,6 +165,48 @@ export default function DsaGuideTab({
   const [manualDifficulty, setManualDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Easy');
   const [manualPattern, setManualPattern] = useState('');
 
+  // Auto-Expanded Questions from database
+  const [autoExpandedQuestions, setAutoExpandedQuestions] = useState<Question[]>([]);
+  const [autoTotalCount, setAutoTotalCount] = useState(0);
+  const [autoCurrentPage, setAutoCurrentPage] = useState(1);
+  const [autoLoading, setAutoLoading] = useState(false);
+  const [autoDifficulty, setAutoDifficulty] = useState('All');
+  const [autoSearch, setAutoSearch] = useState('');
+
+  const fetchAutoExpandedQuestions = async () => {
+    try {
+      setAutoLoading(true);
+      const queryParams = new URLSearchParams({
+        difficulty: autoDifficulty,
+        search: autoSearch,
+        page: autoCurrentPage.toString(),
+        limit: '10'
+      });
+      const response = await apiFetch(`/api/guide/auto-expand/${selectedSectionId}?${queryParams.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setAutoExpandedQuestions(data.questions || []);
+        setAutoTotalCount(data.totalCount || 0);
+      }
+    } catch (err) {
+      console.error('Failed to fetch auto-expanded questions', err);
+    } finally {
+      setAutoLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAutoExpandedQuestions();
+  }, [selectedSectionId, autoCurrentPage, autoDifficulty]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAutoCurrentPage(1);
+      fetchAutoExpandedQuestions();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [autoSearch]);
+
   // Helper to add a problem
   const addCustomProblem = (sectionId: string, problem: GuideProblem) => {
     setCustomGuideProblems(prev => {
@@ -1499,6 +1541,243 @@ export default function DsaGuideTab({
                   <Plus size={14} /> Add Custom Question
                 </button>
               </form>
+            )}
+          </div>
+
+          {/* Section 4: Auto-Expanded Practice Catalog */}
+          <div style={{ 
+            borderTop: '1px dashed var(--border-color)', 
+            paddingTop: '24px', 
+            marginTop: '12px' 
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '1.1rem' }}>📚</span>
+              <h3 style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Auto-Expanded Catalog ({activeSection.title.split('. ')[1]})
+              </h3>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.4' }}>
+              We've scanned the 3,000+ question database and automatically loaded matching questions for this topic below.
+            </p>
+
+            {/* Filter and Search controls */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
+              {/* Search */}
+              <div style={{ 
+                flexGrow: 1, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                background: 'var(--bg-card)', 
+                border: '1px solid var(--border-color)', 
+                borderRadius: '6px', 
+                padding: '4px 10px',
+                minWidth: '200px'
+              }}>
+                <Search size={14} className="text-secondary" />
+                <input
+                  type="text"
+                  placeholder={`Search database ${activeSection.title.split('. ')[1]} questions...`}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    width: '100%',
+                    fontSize: '0.8rem',
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                    padding: '4px 0'
+                  }}
+                  value={autoSearch}
+                  onChange={(e) => setAutoSearch(e.target.value)}
+                />
+              </div>
+
+              {/* Difficulty filter */}
+              <div>
+                <select
+                  className="select-field"
+                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                  value={autoDifficulty}
+                  onChange={(e) => {
+                    setAutoDifficulty(e.target.value);
+                    setAutoCurrentPage(1);
+                  }}
+                >
+                  <option value="All">All Difficulties</option>
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Table or loading state */}
+            {autoLoading ? (
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', padding: '20px 0', textAlign: 'center' }}>
+                Loading extra questions...
+              </div>
+            ) : autoExpandedQuestions.length === 0 ? (
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', padding: '20px 0', textAlign: 'center', border: '1px dashed var(--border-color)', borderRadius: '6px' }}>
+                No database questions found matching current filters.
+              </div>
+            ) : (
+              <div 
+                className="table-container" 
+                style={{ 
+                  border: '1px solid var(--border-color)', 
+                  borderRadius: 'var(--radius-md)', 
+                  overflow: 'hidden', 
+                  background: 'var(--bg-card)'
+                }}
+              >
+                <table className="problems-drill-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '45px', textAlign: 'center' }}>Done</th>
+                      <th>Problem Name</th>
+                      <th style={{ width: '100px' }}>Difficulty</th>
+                      <th>Category</th>
+                      <th style={{ width: '100px', textAlign: 'center' }}>Pin</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {autoExpandedQuestions.map((q) => {
+                      const solvedRecord = getSolvedRecord(q.title);
+                      const isSolved = !!solvedRecord;
+                      const isPinned = isQuestionInGuide(q.title);
+
+                      const wrapQ: GuideProblem = {
+                        title: q.title,
+                        difficulty: q.difficulty,
+                        url: q.url || `https://leetcode.com/problems/${q.id || q.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}/`,
+                        patternNote: q.category || 'General'
+                      };
+
+                      return (
+                        <tr key={q.id} style={{ background: isSolved ? 'rgba(47, 158, 119, 0.015)' : 'transparent' }}>
+                          {/* Done Checkbox */}
+                          <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
+                            <label className="checkbox-container">
+                              <input 
+                                type="checkbox" 
+                                checked={isSolved}
+                                onChange={() => handleCheckboxChange(wrapQ, activeSection)}
+                              />
+                              <span className="checkmark">
+                                {isSolved && <Check size={10} className="text-white" />}
+                              </span>
+                            </label>
+                          </td>
+
+                          {/* Problem Title */}
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <a 
+                                href={wrapQ.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="q-title"
+                                style={{ fontWeight: 500, fontSize: '0.82rem' }}
+                              >
+                                {q.title}
+                              </a>
+                              <a href={wrapQ.url} target="_blank" rel="noopener noreferrer" title="View on LeetCode" style={{ display: 'inline-flex', opacity: 0.5 }}>
+                                <ExternalLink size={11} className="text-secondary" />
+                              </a>
+                            </div>
+                          </td>
+
+                          {/* Difficulty */}
+                          <td>
+                            <span className={`difficulty-badge ${q.difficulty.toLowerCase()}`}>
+                              {q.difficulty}
+                            </span>
+                          </td>
+
+                          {/* Category */}
+                          <td>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                              {q.category || 'General'}
+                            </span>
+                          </td>
+
+                          {/* Pin to Core */}
+                          <td style={{ textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              disabled={isPinned}
+                              onClick={() => handleAddFromSearch(q)}
+                              style={{
+                                border: `1px solid ${isPinned ? 'var(--border-color)' : 'var(--accent-primary)'}`,
+                                background: isPinned ? 'transparent' : 'rgba(47, 158, 119, 0.08)',
+                                color: isPinned ? 'var(--text-muted)' : 'var(--accent-primary)',
+                                fontSize: '0.7rem',
+                                padding: '3px 8px',
+                                borderRadius: '4px',
+                                cursor: isPinned ? 'default' : 'pointer',
+                                fontWeight: 600,
+                                transition: 'all 0.15s'
+                              }}
+                              title={isPinned ? 'Already in your core guide' : 'Pin to core Curated Problems'}
+                            >
+                              {isPinned ? 'Pinned' : '📌 Pin'}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                {/* Pagination Controls */}
+                {autoTotalCount > 10 && (
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    padding: '8px 12px',
+                    borderTop: '1px solid var(--border-color)',
+                    background: 'var(--bg-sidebar)',
+                    fontSize: '0.75rem'
+                  }}>
+                    <button
+                      type="button"
+                      disabled={autoCurrentPage === 1}
+                      onClick={() => setAutoCurrentPage(p => Math.max(1, p - 1))}
+                      style={{
+                        padding: '4px 10px',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        background: 'var(--bg-card)',
+                        color: 'var(--text-primary)',
+                        cursor: autoCurrentPage === 1 ? 'default' : 'pointer',
+                        opacity: autoCurrentPage === 1 ? 0.5 : 1
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                      Page {autoCurrentPage} of {Math.ceil(autoTotalCount / 10)} ({autoTotalCount} total)
+                    </span>
+                    <button
+                      type="button"
+                      disabled={autoCurrentPage >= Math.ceil(autoTotalCount / 10)}
+                      onClick={() => setAutoCurrentPage(p => Math.min(Math.ceil(autoTotalCount / 10), p + 1))}
+                      style={{
+                        padding: '4px 10px',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        background: 'var(--bg-card)',
+                        color: 'var(--text-primary)',
+                        cursor: autoCurrentPage >= Math.ceil(autoTotalCount / 10) ? 'default' : 'pointer',
+                        opacity: autoCurrentPage >= Math.ceil(autoTotalCount / 10) ? 0.5 : 1
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
