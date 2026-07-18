@@ -1290,6 +1290,78 @@ const setGuideTaskProgress = async (taskKey, completed) => {
   writeJsonFile(GUIDE_PROGRESS_FILE, progress);
 };
 
+const CUSTOM_GUIDE_PROBLEMS_FILE = path.join(__dirname, 'data', 'custom_guide_problems.json');
+
+const getCustomGuideProblems = async () => {
+  if (pool) {
+    try {
+      const result = await pool.query('SELECT section_id as "sectionId", title, pattern_note as "patternNote", difficulty, url FROM custom_guide_problems');
+      const grouped = {};
+      result.rows.forEach(row => {
+        if (!grouped[row.sectionId]) grouped[row.sectionId] = [];
+        grouped[row.sectionId].push({
+          title: row.title,
+          patternNote: row.patternNote || '',
+          difficulty: row.difficulty,
+          url: row.url,
+          isCustom: true
+        });
+      });
+      return grouped;
+    } catch (err) {
+      console.error('PostgreSQL getCustomGuideProblems error, falling back to JSON:', err.message);
+    }
+  }
+  return readJsonFile(CUSTOM_GUIDE_PROBLEMS_FILE, {});
+};
+
+const addCustomGuideProblem = async (sectionId, problem) => {
+  if (pool) {
+    try {
+      await pool.query(
+        `INSERT INTO custom_guide_problems (section_id, title, pattern_note, difficulty, url)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (section_id, title) DO UPDATE SET pattern_note = EXCLUDED.pattern_note, difficulty = EXCLUDED.difficulty, url = EXCLUDED.url`,
+        [sectionId, problem.title, problem.patternNote, problem.difficulty, problem.url]
+      );
+      return;
+    } catch (err) {
+      console.error('PostgreSQL addCustomGuideProblem error, falling back to JSON:', err.message);
+    }
+  }
+
+  const data = readJsonFile(CUSTOM_GUIDE_PROBLEMS_FILE, {});
+  if (!data[sectionId]) data[sectionId] = [];
+  
+  data[sectionId] = data[sectionId].filter(p => p.title.toLowerCase() !== problem.title.toLowerCase());
+  data[sectionId].push({
+    title: problem.title,
+    patternNote: problem.patternNote,
+    difficulty: problem.difficulty,
+    url: problem.url,
+    isCustom: true
+  });
+  
+  writeJsonFile(CUSTOM_GUIDE_PROBLEMS_FILE, data);
+};
+
+const removeCustomGuideProblem = async (sectionId, title) => {
+  if (pool) {
+    try {
+      await pool.query('DELETE FROM custom_guide_problems WHERE section_id = $1 AND LOWER(title) = LOWER($2)', [sectionId, title]);
+      return;
+    } catch (err) {
+      console.error('PostgreSQL removeCustomGuideProblem error, falling back to JSON:', err.message);
+    }
+  }
+
+  const data = readJsonFile(CUSTOM_GUIDE_PROBLEMS_FILE, {});
+  if (data[sectionId]) {
+    data[sectionId] = data[sectionId].filter(p => p.title.toLowerCase() !== title.toLowerCase());
+    writeJsonFile(CUSTOM_GUIDE_PROBLEMS_FILE, data);
+  }
+};
+
 const normalizeForMatch = (value = '') => value.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 const parseModelJson = (content) => {
@@ -1970,6 +2042,18 @@ const initDb = async () => {
       );
     `);
 
+    // Create Custom Guide Problems Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS custom_guide_problems (
+        section_id VARCHAR(100) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        pattern_note VARCHAR(255),
+        difficulty VARCHAR(50) NOT NULL,
+        url TEXT NOT NULL,
+        PRIMARY KEY (section_id, title)
+      );
+    `);
+
     // Create LeetCode Profile Cache Table
     await client.query(`
       CREATE TABLE IF NOT EXISTS leetcode_profile (
@@ -2597,6 +2681,47 @@ app.put('/api/guide-progress/:taskKey', async (req, res) => {
   } catch (err) {
     console.error('Failed to save guide progress:', err);
     res.status(500).json({ error: 'Failed to save guide progress' });
+  }
+});
+
+// GET all custom guide problems
+app.get('/api/guide/custom-problems', async (req, res) => {
+  try {
+    const list = await getCustomGuideProblems();
+    res.json(list);
+  } catch (err) {
+    console.error('Failed to retrieve custom guide problems:', err);
+    res.status(500).json({ error: 'Failed to retrieve custom guide problems' });
+  }
+});
+
+// POST add a custom guide problem
+app.post('/api/guide/custom-problems', async (req, res) => {
+  const { sectionId, problem } = req.body;
+  if (!sectionId || !problem || !problem.title || !problem.url || !problem.difficulty) {
+    return res.status(400).json({ error: 'Section ID and complete problem details are required.' });
+  }
+  try {
+    await addCustomGuideProblem(sectionId, problem);
+    res.json({ success: true, sectionId, problem });
+  } catch (err) {
+    console.error('Failed to add custom guide problem:', err);
+    res.status(500).json({ error: 'Failed to add custom guide problem' });
+  }
+});
+
+// DELETE remove a custom guide problem
+app.delete('/api/guide/custom-problems/:sectionId/:title', async (req, res) => {
+  const { sectionId, title } = req.params;
+  if (!sectionId || !title) {
+    return res.status(400).json({ error: 'Section ID and problem title are required.' });
+  }
+  try {
+    await removeCustomGuideProblem(sectionId, title);
+    res.json({ success: true, sectionId, title });
+  } catch (err) {
+    console.error('Failed to delete custom guide problem:', err);
+    res.status(500).json({ error: 'Failed to delete custom guide problem' });
   }
 });
 

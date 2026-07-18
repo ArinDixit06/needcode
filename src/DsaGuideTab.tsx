@@ -137,7 +137,13 @@ export default function DsaGuideTab({
   onGuideProgressError,
   apiFetch
 }: DsaGuideTabProps) {
-  const [selectedSectionId, setSelectedSectionId] = useState<string>('arrays');
+  const [selectedSectionId, setSelectedSectionId] = useState<string>(() => {
+    return localStorage.getItem('needcode_selected_guide_section') || 'arrays';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('needcode_selected_guide_section', selectedSectionId);
+  }, [selectedSectionId]);
 
   // Custom Guide Problems (extended by user from 3k+ DB)
   const [customGuideProblems, setCustomGuideProblems] = useState<Record<string, GuideProblem[]>>(() => {
@@ -149,9 +155,32 @@ export default function DsaGuideTab({
     }
   });
 
+  // Load custom guide problems from the backend database on mount
   useEffect(() => {
-    localStorage.setItem('needcode_custom_guide_problems', JSON.stringify(customGuideProblems));
-  }, [customGuideProblems]);
+    let cancelled = false;
+    const loadCustomProblems = async () => {
+      try {
+        const response = await apiFetch('/api/guide/custom-problems');
+        if (response.ok && !cancelled) {
+          const serverList = await response.json();
+          setCustomGuideProblems(prev => {
+            const merged = { ...prev };
+            Object.keys(serverList).forEach(secId => {
+              merged[secId] = serverList[secId];
+            });
+            localStorage.setItem('needcode_custom_guide_problems', JSON.stringify(merged));
+            return merged;
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load custom guide problems from DB:', err);
+      }
+    };
+    loadCustomProblems();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Search & add UI states
   const [guideSearchQuery, setGuideSearchQuery] = useState('');
@@ -191,29 +220,51 @@ export default function DsaGuideTab({
   }, [selectedSectionId]);
 
   // Helper to add a problem
-  const addCustomProblem = (sectionId: string, problem: GuideProblem) => {
+  const addCustomProblem = async (sectionId: string, problem: GuideProblem) => {
     setCustomGuideProblems(prev => {
       const currentList = prev[sectionId] || [];
       if (currentList.some(p => p.title.toLowerCase() === problem.title.toLowerCase())) {
         return prev;
       }
-      return {
+      const updated = {
         ...prev,
         [sectionId]: [...currentList, problem]
       };
+      localStorage.setItem('needcode_custom_guide_problems', JSON.stringify(updated));
+      return updated;
     });
+
+    try {
+      await apiFetch('/api/guide/custom-problems', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sectionId, problem })
+      });
+    } catch (err) {
+      console.error('Failed to save custom problem to DB:', err);
+    }
   };
 
   // Helper to remove a custom problem
-  const removeCustomProblem = (sectionId: string, problemTitle: string) => {
+  const removeCustomProblem = async (sectionId: string, problemTitle: string) => {
     setCustomGuideProblems(prev => {
       const currentList = prev[sectionId] || [];
       const updatedList = currentList.filter(p => p.title.toLowerCase() !== problemTitle.toLowerCase());
-      return {
+      const updated = {
         ...prev,
         [sectionId]: updatedList
       };
+      localStorage.setItem('needcode_custom_guide_problems', JSON.stringify(updated));
+      return updated;
     });
+
+    try {
+      await apiFetch(`/api/guide/custom-problems/${sectionId}/${encodeURIComponent(problemTitle)}`, {
+        method: 'DELETE'
+      });
+    } catch (err) {
+      console.error('Failed to delete custom problem from DB:', err);
+    }
   };
 
   // Check if a question is already in the guide
