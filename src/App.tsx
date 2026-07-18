@@ -25,7 +25,8 @@ import {
   ChevronRight,
   Menu,
   Sun,
-  Moon
+  Moon,
+  LogOut
 } from 'lucide-react';
 
 interface Question {
@@ -1016,6 +1017,12 @@ function App() {
     showToast('API Key saved locally', 'success');
   };
 
+  const handleLogout = () => {
+    sessionStorage.removeItem('needcode_session_token');
+    setIsAuthenticated(false);
+    showToast('Logged out of workspace successfully', 'success');
+  };
+
   // Toggle solved status
   const handleMarkSolvedClick = (q: Question) => {
     const alreadySolved = solved.find(s => s.questionId === q.id);
@@ -1853,13 +1860,18 @@ function App() {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="notion-sidebar-footer">
+        <div className="notion-sidebar-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
             NeedCode v1.0
           </div>
-          <button className="theme-toggle-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Switch theme">
-            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="theme-toggle-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Switch theme">
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
+            <button className="theme-toggle-btn" onClick={handleLogout} title="Log Out / Lock Workspace" style={{ color: 'var(--tag-hard-text)' }}>
+              <LogOut size={14} />
+            </button>
+          </div>
         </div>
       </aside>
 
