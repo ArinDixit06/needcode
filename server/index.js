@@ -3040,8 +3040,10 @@ app.get('/api/leetcode/profile', async (req, res) => {
     };
 
     await saveCachedProfile(username, profileData);
-    await recordRankingHistory(username, profileData.ranking);
+    // Compute jumps BEFORE recording new rank so the current fetch
+    // doesn't pollute the historical data used for day/week/month thresholds.
     const jumps = await getRankingJumps(username, profileData.ranking);
+    await recordRankingHistory(username, profileData.ranking);
     res.json({
       ...profileData,
       rankingJumps: jumps
