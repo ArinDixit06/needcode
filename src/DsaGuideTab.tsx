@@ -12,8 +12,7 @@ import {
 import { dsaGuideSections } from './dsaGuideData';
 import type { GuideSection, GuideProblem } from './dsaGuideData';
 
-const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
-const guideApiUrl = (path: string) => apiBaseUrl ? `${apiBaseUrl}${path}` : path;
+
 
 const getCompletedTasks = (progress: unknown): Record<string, boolean> => {
   if (!progress || typeof progress !== 'object') {
@@ -367,7 +366,7 @@ export default function DsaGuideTab({
 
     const loadGuideProgress = async () => {
       try {
-        const response = await fetch(guideApiUrl('/api/guide-progress'));
+        const response = await apiFetch('/api/guide-progress');
         if (!response.ok) {
           throw new Error('The guide progress service returned an error.');
         }
@@ -383,7 +382,7 @@ export default function DsaGuideTab({
         const legacyTaskKeys = Object.keys(localCompletedTasks)
           .filter(taskKey => !completedServerTasks[taskKey]);
         await Promise.all(legacyTaskKeys.map(async taskKey => {
-          const saveResponse = await fetch(guideApiUrl(`/api/guide-progress/${encodeURIComponent(taskKey)}`), {
+          const saveResponse = await apiFetch(`/api/guide-progress/${encodeURIComponent(taskKey)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ completed: true })
@@ -415,7 +414,7 @@ export default function DsaGuideTab({
     }));
 
     try {
-      const response = await fetch(guideApiUrl(`/api/guide-progress/${encodeURIComponent(key)}`), {
+      const response = await apiFetch(`/api/guide-progress/${encodeURIComponent(key)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ completed })
