@@ -57,7 +57,7 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 app.use('/api', (req, res, next) => {
-  if (!WEBSITE_PASSWORD || req.path.startsWith('/auth/')) {
+  if (req.method === 'OPTIONS' || !WEBSITE_PASSWORD || req.path.startsWith('/auth/')) {
     return next();
   }
   const token = req.headers.authorization?.replace(/^Bearer\s+/i, '') || '';
