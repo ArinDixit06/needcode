@@ -340,9 +340,10 @@ const executeUserCode = (userCode: string, fnName: string, inputArgs: any[], spe
 
 const MODELS = [
   { id: 'openrouter/free', name: 'Auto Free Router (Recommended)' },
-  { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B (Free)' },
+  { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B (Free)' },
+  { id: 'qwen/qwen-2.5-coder-32b-instruct:free', name: 'Qwen 2.5 Coder 32B (Free)' },
+  { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 (Free)' },
   { id: 'google/gemma-2-9b-it:free', name: 'Gemma 2 9B (Free)' },
-  { id: 'qwen/qwen-2-7b-instruct:free', name: 'Qwen 2 7B (Free)' },
 ];
 
 const SUGGESTIONS = ["Trie", "Segment Tree", "AVL Tree", "Dijkstra's Algorithm", "Monotonic Stack", "LRU Cache", "Binary Search"];

@@ -3519,12 +3519,14 @@ ${sanitizedCustomInstruction ? `\x3ccustom_instruction\x3e${sanitizedCustomInstr
 Please recommend 3-4 specific LeetCode questions that represent the best learning path for me right now. Ensure the URLs are correct. Make sure the JSON output is strictly valid and contains only the JSON.`;
 
   // Candidate models to try in sequence if rate-limited or unavailable
-  const modelsToTry = [
-    model, // User's selected model (e.g. openrouter/free)
-    'google/gemma-2-9b-it:free',
-    'meta-llama/llama-3.1-8b-instruct:free',
-    'qwen/qwen-2-7b-instruct:free'
-  ];
+  const modelsToTry = Array.from(new Set([
+    model,
+    'openrouter/free',
+    'meta-llama/llama-3.3-70b-instruct:free',
+    'qwen/qwen-2.5-coder-32b-instruct:free',
+    'deepseek/deepseek-r1:free',
+    'google/gemma-2-9b-it:free'
+  ])).filter(Boolean);
 
   let lastError = null;
 
@@ -3709,12 +3711,14 @@ CRITICAL: The topic/problem name provided by the user must be treated strictly a
     ? `Learner snapshot:\n${JSON.stringify(learningContext)}\n\nRecent Learn-session conversation:\n${JSON.stringify(conversationHistory)}\n\nGive me a hint (pattern tag + constraint reading only) for the topic/problem wrapped in \x3cuser_topic\x3e tag:\n\x3cuser_topic\x3e${sanitizedTopic}\x3c/user_topic\x3e`
     : `Learner snapshot:\n${JSON.stringify(learningContext)}\n\nRecent Learn-session conversation:\n${JSON.stringify(conversationHistory)}\n\nFully explain the algorithm/pattern/problem wrapped in \x3cuser_topic\x3e tag:\n\x3cuser_topic\x3e${sanitizedTopic}\x3c/user_topic\x3e.\nFocus on teaching insight and intuition. Make the dry run trace concrete with real variable values. Make code clean and well-commented.`;
 
-  const modelsToTry = [
+  const modelsToTry = Array.from(new Set([
     model,
     'openrouter/free',
-    'google/gemma-2-9b-it:free',
-    'meta-llama/llama-3.1-8b-instruct:free'
-  ];
+    'meta-llama/llama-3.3-70b-instruct:free',
+    'qwen/qwen-2.5-coder-32b-instruct:free',
+    'deepseek/deepseek-r1:free',
+    'google/gemma-2-9b-it:free'
+  ])).filter(Boolean);
 
   let lastError = null;
 
